@@ -22,8 +22,12 @@
 
 O **Titlebar Styler** é uma aplicação nativa rápida e elegante projetada para permitir que os utilizadores do GNOME (incluindo GNOME 51 / Fedora 44+) personalizem o aspeto dos controlos de janelas (**Fechar**, **Minimizar**, **Maximizar**), sem quebrar a integridade do sistema ou causar conflitos de temas.
 
+A aplicação inclui agora dois modos de utilização através de abas no topo da janela (`Adw.ViewSwitcher`):
+1. **Modelos Prontos:** Estilos pré-configurados prontos a aplicar com um clique.
+2. **Personalizador:** Editor interativo com pré-visualização ao vivo (*Live Preview*) para criar estilos personalizados sob medida.
+
 ### 🛡️ Princípios Técnicos & Segurança
-- **Geometria Perfeita 1:1:** Resolve a deformação vertical das janelas GTK4/Libadwaita, garantindo círculos matematicamente exatos (14px × 14px / 16px × 16px) e ícones nítidos e centrados.
+- **Geometria Perfeita 1:1:** Cálculo dinâmico das margens de compensação para evitar que o GTK4 deforme ou estique os botões verticalmente. Garante círculos e quadrados matematicamente simétricos em qualquer dimensão (de 10px a 26px).
 - **Injeção Cirúrgica e Não-Destrutiva:** Modifica apenas o bloco delimitado por marcadores (`/* --- TITLEBAR STYLER INICIO --- */`) em `~/.config/gtk-4.0/gtk.css` e `~/.config/gtk-3.0/gtk.css`. As tuas personalizações prévias de CSS permanecem 100% intactas.
 - **Zero Parser Errors no GTK4:** Não utiliza `!important`. As regras utilizam seletores de alta especificidade (`window headerbar windowcontrols button`) compatíveis com o motor do GTK4/Libadwaita.
 - **Recarregamento Seguro da Sessão:** Não força o encerramento abrupto de processos (`killall`) para evitar perda de dados em aplicações abertas. Em vez disso, dialoga com o gestor de sessão via `gnome-session-quit --logout`.
@@ -31,23 +35,36 @@ O **Titlebar Styler** é uma aplicação nativa rápida e elegante projetada par
 
 ---
 
-## 🎨 Estilos e Ícones Disponíveis
+## 🎨 Funcionalidades
 
-1. **macOS (Símbolos no Hover):** Bolinhas perfeitamente circulares com as cores clássicas (Vermelho / Amarelo / Verde), revelando os símbolos de controlo (`×`, `−`, `+`) em contraste escuro ao passar o rato (estilo autêntico do macOS).
-2. **macOS (Ícones Sempre Visíveis):** Círculos perfeitos com as cores clássicas e os ícones simbólicos permanentemente visíveis e legíveis.
-3. **Minimalista (com Ícones):** Círculos translúcidos modernos que mantêm a visibilidade e clareza dos ícones (sem ocultar a identidade do botão).
-4. **Contorno / Outline (Colorido):** Círculos com contorno fino e ícones simbólicos nas cores de ação (vermelho para fechar, amarelo para minimizar, verde para maximizar).
-5. **Fluent / Moderno:** Estilo retangular suave com cantos arredondados (6px), ícones nítidos e destaque a vermelho no botão de fecho durante o hover.
-6. **Minimalista Ghost (Oculto até ao Hover):** Botões discretos e translúcidos que apenas revelam os seus detalhes ao passar o cursor pela barra.
-7. **Repor Padrão:** Remove todas as injeções e recupera de imediato os botões originais do Fedora/Adwaita.
+### 1. Modelos Prontos (Presets)
+- **macOS (Símbolos no Hover):** Círculos com as cores clássicas da Apple que revelam os símbolos (`×`, `−`, `+`) em contraste escuro ao passar o cursor.
+- **macOS (Ícones Sempre Visíveis):** Círculos perfeitos com as cores do macOS e ícones simbólicos permanentemente visíveis.
+- **Minimalista (com Ícones):** Círculos translúcidos elegantes com ícones que se adaptam aos temas claro e escuro.
+- **Contorno / Outline (Colorido):** Círculos com borda fina e ícones nas cores de ação (vermelho, amarelo, verde).
+- **Fluent / Moderno:** Cantos arredondados suaves (6px), ícones nítidos e destaque a vermelho no botão de fechar durante o hover.
+- **Minimalista Ghost (Oculto até ao Hover):** Botões ultradiscretos que apenas se revelam ao aproximar o rato.
+- **Repor Padrão:** Restaura os botões originais do Fedora/Adwaita.
+
+### 2. Personalizador Interativo (Live Editor)
+- **Pré-Visualização em Tempo Real:** Uma barra de janelas de teste no topo que reage instantaneamente aos ajustes e permite testar o *hover*.
+- **Dimensões e Formato:**
+  - Tamanho dos Botões (10px a 26px).
+  - Formato: *Círculo Perfeito*, *Cantos Arredondados (6px)*, *Quadrado (0px)* ou *Curvatura Personalizada*.
+  - Tamanho dos Ícones internos (6px a 20px).
+  - Espaçamento horizontal entre botões (1px a 14px).
+- **Paleta de Cores:**
+  - Cores de fundo e cores do ícone para cada botão (Fechar, Minimizar, Maximizar) usando o `Gtk.ColorDialogButton` nativo.
+  - Opção de borda/contorno com cor e espessura ajustáveis.
+- **Comportamentos no Hover:**
+  - Visibilidade dos Ícones: *Símbolos no Hover*, *Sempre Visíveis* ou *Ocultar Ícones*.
+  - Efeitos de Cor no Hover: *Escurecer suavemente*, *Iluminar / Clarear* ou *Sem efeito*.
 
 ---
 
 ## 📦 Instalação
 
 ### Opção 1: Via Fedora COPR (Recomendado)
-
-O Titlebar Styler está disponível no Fedora COPR para instalação simples via gestor de pacotes `dnf`:
 
 ```bash
 # 1. Ativar o repositório COPR
@@ -57,24 +74,21 @@ sudo dnf copr enable flaviomms/titlebar-styler
 sudo dnf install titlebar-styler
 ```
 
-### Opção 2: Instalação Manual (A partir do Código-Fonte)
+### Opção 2: Instalação Local no Sistema (A partir do Código-Fonte)
 
-Se preferires instalar diretamente a partir deste repositório Git:
-
-#### Requisitos
-```bash
-sudo dnf install python3 python3-gobject gtk4 libadwaita gnome-session make
-```
-
-#### Compilação e Instalação
 ```bash
 git clone https://github.com/flaviomms/titlebar-styler.git
 cd titlebar-styler
 
-# Testar as especificações e validações
+# Testar as validações
 make test
 
 # Instalar no sistema
+sudo make install
+```
+
+Para atualizar após alterações no código:
+```bash
 sudo make install
 ```
 
@@ -87,26 +101,13 @@ sudo make uninstall
 
 ## 🚀 Como Utilizar
 
-1. Abre a gaveta de aplicações do GNOME e pesquisa por **Titlebar Styler** (ou executa `titlebar-styler` no terminal).
-2. Cada linha apresenta um indicador visual do aspeto dos botões e a sua descrição.
-3. Escolhe o teu estilo preferido e clica em **Aplicar**.
-4. Na janela de diálogo que surgir:
-   - Clica em **Terminar Sessão Agora** para aplicar as alterações com segurança no gestor de sessão; ou
+1. Abre o **Titlebar Styler** a partir da gaveta de aplicações do GNOME (ou executa `titlebar-styler` no terminal).
+2. Na aba **Modelos**, podes escolher um dos estilos predefinidos e clicar em **Aplicar**.
+3. Na aba **Personalizar**, podes ajustar cada detalhe visual ao teu gosto, testar o hover na pré-visualização e clicar em **Aplicar no Sistema**.
+4. Quando surgir a janela de diálogo:
+   - Clica em **Terminar Sessão Agora** para que todas as aplicações assumam o visual em segurança; ou
    - Clica em **Mais Tarde** se estiveres a trabalhar.
-5. Para voltar às definições originais do sistema, basta aceder à secção **Repor Padrão** e clicar em **Restaurar**.
-
----
-
-## 🛠️ Publicação no Fedora COPR
-
-Para publicar no repositório COPR (`flaviomms/titlebar-styler`):
-
-1. **Configurar o Repositório:** Acede a [copr.fedorainfracloud.org](https://copr.fedorainfracloud.org/) e cria o projeto `titlebar-styler`.
-2. **Build via SCM:**
-   - **Clone URL:** `https://github.com/flaviomms/titlebar-styler.git`
-   - **Committish:** `main` (ou a tag `v1.0.0`)
-   - **Spec file path:** `titlebar-styler.spec`
-   - **Method:** `make_srpm` ou `rpkg`
+5. Para restaurar o visual de fábrica a qualquer momento, basta aceder a **Repor Padrão** e clicar em **Restaurar**.
 
 ---
 
