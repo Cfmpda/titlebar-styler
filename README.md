@@ -103,7 +103,7 @@ A aplicação inclui dois modos de utilização através de abas no topo da jane
 
 ```bash
 # 1. Ativar o repositório COPR
-sudo dnf copr enable flaviomms/titlebar-styler
+sudo dnf copr enable cfmpda/titlebar-styler
 
 # 2. Instalar a aplicação
 sudo dnf install titlebar-styler
@@ -112,7 +112,7 @@ sudo dnf install titlebar-styler
 ### Opção 2: Instalação Local no Sistema (A partir do Código-Fonte)
 
 ```bash
-git clone https://github.com/flaviomms/titlebar-styler.git
+git clone https://github.com/Cfmpda/titlebar-styler.git
 cd titlebar-styler
 
 # Testar as validações

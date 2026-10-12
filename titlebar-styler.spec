@@ -5,7 +5,7 @@ Summary:        Personalizador de botões da barra de janelas para GNOME
 Summary(en):    GNOME titlebar window controls styler
 
 License:        GPL-3.0-or-later
-URL:            https://github.com/flaviomms/titlebar-styler
+URL:            https://github.com/Cfmpda/titlebar-styler
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 
 BuildArch:      noarch

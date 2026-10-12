@@ -1842,8 +1842,8 @@ class MainWindow(Adw.ApplicationWindow):
             version="1.0.0",
             copyright="© 2026 Flavio MMS",
             license_type=Gtk.License.GPL_3_0,
-            website="https://github.com/flaviomms/titlebar-styler",
-            issue_url="https://github.com/flaviomms/titlebar-styler/issues",
+            website="https://github.com/Cfmpda/titlebar-styler",
+            issue_url="https://github.com/Cfmpda/titlebar-styler/issues",
             comments="Personalizador de botões da barra de janelas para o ambiente GNOME no Fedora."
         )
         about.present(self)

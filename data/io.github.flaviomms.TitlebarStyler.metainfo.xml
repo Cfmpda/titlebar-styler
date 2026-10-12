@@ -11,11 +11,11 @@
     </p>
   </description>
   <launchable type="desktop-id">titlebar-styler.desktop</launchable>
-  <developer id="io.github.flaviomms">
+  <developer id="io.github.Cfmpda">
     <name>Flavio MMS</name>
   </developer>
-  <url type="homepage">https://github.com/flaviomms/titlebar-styler</url>
-  <url type="bugtracker">https://github.com/flaviomms/titlebar-styler/issues</url>
+  <url type="homepage">https://github.com/Cfmpda/titlebar-styler</url>
+  <url type="bugtracker">https://github.com/Cfmpda/titlebar-styler/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
     <release version="1.0.0" date="2026-10-12">
