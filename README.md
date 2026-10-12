@@ -30,6 +30,9 @@ A aplicação inclui dois modos de utilização através de abas no topo da jane
 - **Disposição Segura via GSettings Mutter:** O posicionamento dos botões (esquerda, direita ou divididos) e a sua ativação/desativação utilizam a API oficial `org.gnome.desktop.wm.preferences button-layout`, aplicando-se instantaneamente no sistema com 100% de estabilidade.
 - **Geometria Perfeita 1:1:** Cálculo dinâmico das margens de compensação para evitar que o GTK4 deforme os botões. Garante simetria exata em qualquer dimensão (de 10px a 26px).
 - **Formas Vetoriais e Importação de SVGs:** Suporte para polígonos vetoriais dinâmicos (hexágonos, estrelas, diamantes, escudos) e importação de ficheiros SVG personalizados tanto para as formas como para os ícones.
+- **Compatibilidade Universal (GTK4 + GTK3 + Flatpak):**
+  - **Suporte Flatpak Automático:** Ao aplicar um estilo, o Titlebar Styler concede automaticamente permissões de leitura às pastas de configuração GTK (`flatpak override --user`), permitindo que aplicações em sandbox (como a Calculadora, Calendário, etc.) herdem os botões personalizados sem qualquer intervenção manual no terminal.
+  - **Suporte Legado GTK3:** Inclui automaticamente seletores `headerbar button.titlebutton` para garantir que aplicações baseadas em GTK3 (GIMP, LibreOffice, Inkscape, apps de sistema) recebam os mesmos botões, cores e estilos.
 - **Injeção Cirúrgica e Não-Destrutiva:** Modifica apenas o bloco delimitado por marcadores (`/* --- TITLEBAR STYLER INICIO --- */`) em `~/.config/gtk-4.0/gtk.css` e `~/.config/gtk-3.0/gtk.css`. As tuas personalizações prévias de CSS permanecem 100% intactas.
 - **Zero Parser Errors no GTK4:** Não utiliza `!important`. As regras utilizam seletores de alta especificidade (`window headerbar windowcontrols button`).
 - **Recarregamento Seguro da Sessão:** Sugestão de logout seguro via `gnome-session-quit --logout`.
