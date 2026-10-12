@@ -1,8 +1,8 @@
-#!/usr/bin/python3
 import sys
 import os
 import json
 import shutil
+import subprocess
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
@@ -17,6 +17,21 @@ ICONS_DIR = os.path.join(CONFIG_DIR, "custom-icons")
 
 os.makedirs(CONFIG_DIR, exist_ok=True)
 os.makedirs(ICONS_DIR, exist_ok=True)
+
+def ensure_flatpak_overrides():
+    """Concede aos Flatpaks permissão de leitura às pastas de configuração GTK do utilizador."""
+    flatpak_bin = shutil.which("flatpak")
+    if not flatpak_bin:
+        return
+    try:
+        subprocess.run(
+            [flatpak_bin, "override", "--user", "--filesystem=xdg-config/gtk-4.0:ro", "--filesystem=xdg-config/gtk-3.0:ro"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5
+        )
+    except Exception as e:
+        print(f"Aviso ao aplicar overrides Flatpak: {e}")
 
 ACCENT_COLORS = {
     "blue": "#3584e4",
@@ -38,7 +53,8 @@ STYLES = {
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
-headerbar windowcontrols button.image-button {
+headerbar windowcontrols button.image-button,
+headerbar button.titlebutton {
     border-radius: 9999px;
     min-width: 14px;
     min-height: 14px;
@@ -52,7 +68,8 @@ headerbar windowcontrols button.image-button {
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
 headerbar windowcontrols button image,
-headerbar windowcontrols button.image-button image {
+headerbar windowcontrols button.image-button image,
+headerbar button.titlebutton image {
     min-width: 10px;
     min-height: 10px;
     padding: 0;
@@ -64,34 +81,42 @@ headerbar windowcontrols button.image-button image {
 window headerbar windowcontrols:hover button image,
 headerbar windowcontrols:hover button image,
 window headerbar windowcontrols button:hover image,
-headerbar windowcontrols button:hover image {
+headerbar windowcontrols button:hover image,
+headerbar:hover button.titlebutton image,
+headerbar button.titlebutton:hover image {
     opacity: 0.85;
 }
 window headerbar windowcontrols button.close,
-headerbar windowcontrols button.close {
+headerbar windowcontrols button.close,
+headerbar button.titlebutton.close {
     background-color: #ff5f56;
     color: #4d0000;
 }
 window headerbar windowcontrols button.close:hover,
-headerbar windowcontrols button.close:hover {
+headerbar windowcontrols button.close:hover,
+headerbar button.titlebutton.close:hover {
     background-color: #e0443e;
 }
 window headerbar windowcontrols button.minimize,
-headerbar windowcontrols button.minimize {
+headerbar windowcontrols button.minimize,
+headerbar button.titlebutton.minimize {
     background-color: #ffbd2e;
     color: #995700;
 }
 window headerbar windowcontrols button.minimize:hover,
-headerbar windowcontrols button.minimize:hover {
+headerbar windowcontrols button.minimize:hover,
+headerbar button.titlebutton.minimize:hover {
     background-color: #dea123;
 }
 window headerbar windowcontrols button.maximize,
-headerbar windowcontrols button.maximize {
+headerbar windowcontrols button.maximize,
+headerbar button.titlebutton.maximize {
     background-color: #27c93f;
     color: #006500;
 }
 window headerbar windowcontrols button.maximize:hover,
-headerbar windowcontrols button.maximize:hover {
+headerbar windowcontrols button.maximize:hover,
+headerbar button.titlebutton.maximize:hover {
     background-color: #1aab29;
 }"""
     },
@@ -102,7 +127,8 @@ headerbar windowcontrols button.maximize:hover {
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
-headerbar windowcontrols button.image-button {
+headerbar windowcontrols button.image-button,
+headerbar button.titlebutton {
     border-radius: 9999px;
     min-width: 14px;
     min-height: 14px;
@@ -116,7 +142,8 @@ headerbar windowcontrols button.image-button {
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
 headerbar windowcontrols button image,
-headerbar windowcontrols button.image-button image {
+headerbar windowcontrols button.image-button image,
+headerbar button.titlebutton image {
     min-width: 10px;
     min-height: 10px;
     padding: 0;
@@ -125,34 +152,41 @@ headerbar windowcontrols button.image-button image {
     opacity: 0.75;
 }
 window headerbar windowcontrols button:hover image,
-headerbar windowcontrols button:hover image {
+headerbar windowcontrols button:hover image,
+headerbar button.titlebutton:hover image {
     opacity: 1;
 }
 window headerbar windowcontrols button.close,
-headerbar windowcontrols button.close {
+headerbar windowcontrols button.close,
+headerbar button.titlebutton.close {
     background-color: #ff5f56;
     color: #4d0000;
 }
 window headerbar windowcontrols button.close:hover,
-headerbar windowcontrols button.close:hover {
+headerbar windowcontrols button.close:hover,
+headerbar button.titlebutton.close:hover {
     background-color: #e0443e;
 }
 window headerbar windowcontrols button.minimize,
-headerbar windowcontrols button.minimize {
+headerbar windowcontrols button.minimize,
+headerbar button.titlebutton.minimize {
     background-color: #ffbd2e;
     color: #995700;
 }
 window headerbar windowcontrols button.minimize:hover,
-headerbar windowcontrols button.minimize:hover {
+headerbar windowcontrols button.minimize:hover,
+headerbar button.titlebutton.minimize:hover {
     background-color: #dea123;
 }
 window headerbar windowcontrols button.maximize,
-headerbar windowcontrols button.maximize {
+headerbar windowcontrols button.maximize,
+headerbar button.titlebutton.maximize {
     background-color: #27c93f;
     color: #006500;
 }
 window headerbar windowcontrols button.maximize:hover,
-headerbar windowcontrols button.maximize:hover {
+headerbar windowcontrols button.maximize:hover,
+headerbar button.titlebutton.maximize:hover {
     background-color: #1aab29;
 }"""
     },
@@ -163,7 +197,8 @@ headerbar windowcontrols button.maximize:hover {
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
-headerbar windowcontrols button.image-button {
+headerbar windowcontrols button.image-button,
+headerbar button.titlebutton {
     border-radius: 9999px;
     min-width: 16px;
     min-height: 16px;
@@ -176,14 +211,16 @@ headerbar windowcontrols button.image-button {
     -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button:hover,
-headerbar windowcontrols button:hover {
+headerbar windowcontrols button:hover,
+headerbar button.titlebutton:hover {
     background-color: alpha(currentColor, 0.20);
     color: currentColor;
 }
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
 headerbar windowcontrols button image,
-headerbar windowcontrols button.image-button image {
+headerbar windowcontrols button.image-button image,
+headerbar button.titlebutton image {
     min-width: 10px;
     min-height: 10px;
     padding: 0;
@@ -199,7 +236,8 @@ headerbar windowcontrols button.image-button image {
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
-headerbar windowcontrols button.image-button {
+headerbar windowcontrols button.image-button,
+headerbar button.titlebutton {
     border-radius: 9999px;
     min-width: 16px;
     min-height: 16px;
@@ -210,39 +248,46 @@ headerbar windowcontrols button.image-button {
     -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button.close,
-headerbar windowcontrols button.close {
+headerbar windowcontrols button.close,
+headerbar button.titlebutton.close {
     border: 1.5px solid #ff5f56;
     color: #ff5f56;
 }
 window headerbar windowcontrols button.close:hover,
-headerbar windowcontrols button.close:hover {
+headerbar windowcontrols button.close:hover,
+headerbar button.titlebutton.close:hover {
     background-color: #ff5f56;
     color: #ffffff;
 }
 window headerbar windowcontrols button.minimize,
-headerbar windowcontrols button.minimize {
+headerbar windowcontrols button.minimize,
+headerbar button.titlebutton.minimize {
     border: 1.5px solid #ffbd2e;
     color: #ffbd2e;
 }
 window headerbar windowcontrols button.minimize:hover,
-headerbar windowcontrols button.minimize:hover {
+headerbar windowcontrols button.minimize:hover,
+headerbar button.titlebutton.minimize:hover {
     background-color: #ffbd2e;
     color: #ffffff;
 }
 window headerbar windowcontrols button.maximize,
-headerbar windowcontrols button.maximize {
+headerbar windowcontrols button.maximize,
+headerbar button.titlebutton.maximize {
     border: 1.5px solid #27c93f;
     color: #27c93f;
 }
 window headerbar windowcontrols button.maximize:hover,
-headerbar windowcontrols button.maximize:hover {
+headerbar windowcontrols button.maximize:hover,
+headerbar button.titlebutton.maximize:hover {
     background-color: #27c93f;
     color: #ffffff;
 }
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
 headerbar windowcontrols button image,
-headerbar windowcontrols button.image-button image {
+headerbar windowcontrols button.image-button image,
+headerbar button.titlebutton image {
     min-width: 10px;
     min-height: 10px;
     padding: 0;
@@ -258,7 +303,8 @@ headerbar windowcontrols button.image-button image {
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
-headerbar windowcontrols button.image-button {
+headerbar windowcontrols button.image-button,
+headerbar button.titlebutton {
     border-radius: 6px;
     min-width: 24px;
     min-height: 20px;
@@ -271,18 +317,21 @@ headerbar windowcontrols button.image-button {
     -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button:hover,
-headerbar windowcontrols button:hover {
+headerbar windowcontrols button:hover,
+headerbar button.titlebutton:hover {
     background-color: alpha(currentColor, 0.12);
 }
 window headerbar windowcontrols button.close:hover,
-headerbar windowcontrols button.close:hover {
+headerbar windowcontrols button.close:hover,
+headerbar button.titlebutton.close:hover {
     background-color: #e81123;
     color: #ffffff;
 }
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
 headerbar windowcontrols button image,
-headerbar windowcontrols button.image-button image {
+headerbar windowcontrols button.image-button image,
+headerbar button.titlebutton image {
     min-width: 10px;
     min-height: 10px;
     padding: 0;
@@ -298,7 +347,8 @@ headerbar windowcontrols button.image-button image {
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
-headerbar windowcontrols button.image-button {
+headerbar windowcontrols button.image-button,
+headerbar button.titlebutton {
     border-radius: 9999px;
     min-width: 14px;
     min-height: 14px;
@@ -315,14 +365,17 @@ headerbar windowcontrols button.image-button {
 window headerbar windowcontrols:hover button,
 headerbar windowcontrols:hover button,
 window headerbar windowcontrols button:hover,
-headerbar windowcontrols button:hover {
+headerbar windowcontrols button:hover,
+headerbar:hover button.titlebutton,
+headerbar button.titlebutton:hover {
     opacity: 1;
     background-color: alpha(currentColor, 0.3);
 }
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
 headerbar windowcontrols button image,
-headerbar windowcontrols button.image-button image {
+headerbar windowcontrols button.image-button image,
+headerbar button.titlebutton image {
     min-width: 10px;
     min-height: 10px;
     padding: 0;
@@ -334,7 +387,9 @@ headerbar windowcontrols button.image-button image {
 window headerbar windowcontrols:hover button image,
 headerbar windowcontrols:hover button image,
 window headerbar windowcontrols button:hover image,
-headerbar windowcontrols button:hover image {
+headerbar windowcontrols button:hover image,
+headerbar:hover button.titlebutton image,
+headerbar button.titlebutton:hover image {
     opacity: 0.85;
 }"""
     }
@@ -635,7 +690,8 @@ def generate_css(params, is_preview=False):
         return f"""window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
-headerbar windowcontrols button.image-button {{
+headerbar windowcontrols button.image-button,
+headerbar button.titlebutton {{
     min-width: {btn_size}px;
     min-height: {btn_size}px;
     padding: 0;
@@ -647,7 +703,8 @@ headerbar windowcontrols button.image-button {{
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
 headerbar windowcontrols button image,
-headerbar windowcontrols button.image-button image {{
+headerbar windowcontrols button.image-button image,
+headerbar button.titlebutton image {{
     min-width: {icon_size}px;
     min-height: {icon_size}px;
     padding: 0;
@@ -659,52 +716,63 @@ headerbar windowcontrols button.image-button image {{
 window headerbar windowcontrols:hover button image,
 headerbar windowcontrols:hover button image,
 window headerbar windowcontrols button:hover image,
-headerbar windowcontrols button:hover image {{
+headerbar windowcontrols button:hover image,
+headerbar:hover button.titlebutton image,
+headerbar button.titlebutton:hover image {{
     opacity: {icon_hover_opacity};
 }}
 window headerbar windowcontrols button.close,
-headerbar windowcontrols button.close {{
+headerbar windowcontrols button.close,
+headerbar button.titlebutton.close {{
     {close_bg_normal}
     color: {close_fg};
     {shadow_close_normal}
 }}
 window headerbar windowcontrols button.close:hover,
-headerbar windowcontrols button.close:hover {{
+headerbar windowcontrols button.close:hover,
+headerbar button.titlebutton.close:hover {{
     {hover_close_bg_css}
     {shadow_close_hover}
 }}
 window headerbar windowcontrols button.close image,
-headerbar windowcontrols button.close image {{
+headerbar windowcontrols button.close image,
+headerbar button.titlebutton.close image {{
     {icon_source_close}
 }}
 window headerbar windowcontrols button.minimize,
-headerbar windowcontrols button.minimize {{
+headerbar windowcontrols button.minimize,
+headerbar button.titlebutton.minimize {{
     {min_bg_normal}
     color: {min_fg};
     {shadow_min_normal}
 }}
 window headerbar windowcontrols button.minimize:hover,
-headerbar windowcontrols button.minimize:hover {{
+headerbar windowcontrols button.minimize:hover,
+headerbar button.titlebutton.minimize:hover {{
     {hover_min_bg_css}
     {shadow_min_hover}
 }}
 window headerbar windowcontrols button.minimize image,
-headerbar windowcontrols button.minimize image {{
+headerbar windowcontrols button.minimize image,
+headerbar button.titlebutton.minimize image {{
     {icon_source_min}
 }}
 window headerbar windowcontrols button.maximize,
-headerbar windowcontrols button.maximize {{
+headerbar windowcontrols button.maximize,
+headerbar button.titlebutton.maximize {{
     {max_bg_normal}
     color: {max_fg};
     {shadow_max_normal}
 }}
 window headerbar windowcontrols button.maximize:hover,
-headerbar windowcontrols button.maximize:hover {{
+headerbar windowcontrols button.maximize:hover,
+headerbar button.titlebutton.maximize:hover {{
     {hover_max_bg_css}
     {shadow_max_hover}
 }}
 window headerbar windowcontrols button.maximize image,
-headerbar windowcontrols button.maximize image {{
+headerbar windowcontrols button.maximize image,
+headerbar button.titlebutton.maximize image {{
     {icon_source_max}
 }}"""
 
@@ -1857,6 +1925,9 @@ class MainWindow(Adw.ApplicationWindow):
         try:
             for path in paths:
                 apply_safe_css(path, css_code)
+
+            # Garante que os Flatpaks consigam ler os estilos GTK sem intervenção do utilizador
+            ensure_flatpak_overrides()
 
             if button_layout is not None:
                 try:
