@@ -49,24 +49,31 @@ A aplicação inclui dois modos de utilização através de abas no topo da jane
 
 ### 2. Personalizador Interativo (Live Editor)
 - **Pré-Visualização em Tempo Real:** Uma barra de janelas reativa que mostra os botões a moverem-se entre a esquerda e a direita, desaparecerem quando desativados e reagirem ao passar o rato (*hover*).
-- **Biblioteca de Formatos do Botão:**
-  - *Círculo Perfeito* (`border-radius: 9999px`)
-  - *Apenas Ícone (Sem Fundo / Flutuante)*: O botão não tem moldura visível, destacando apenas o ícone.
-  - *Cantos Arredondados Suaves (6px)*
-  - *Quadrado (0px)*
-  - *Squircle (Superelipse Apple 8px)*
-  - *Folha / Gota Diagonal*: Dois cantos arredondados e dois retos (`14px 0px 14px 0px`).
-  - *Canto Único Arredondado*: Apenas o canto superior esquerdo arredondado (`14px 0px 0px 0px`).
-  - *Polígonos Vetoriais SVG Dinâmicos*:
-    - ⬡ **Hexágono**
-    - ★ **Estrela**
-    - ◆ **Diamante / Losango**
-    - 🛡️ **Escudo**
-  - *Curvatura Personalizada (Slider)*
-  - *Importar Forma SVG Própria...* (permite escolher qualquer SVG do disco).
+- **Editor de Formato Estilo Nova Launcher (4 Cantos Independentes):**
+  - **Arquetipos Rápidos:** Círculo (`9999px`), Squircle (`8px`), Arredondado (`6px`), Quadrado (`0px`), Folha/Gota (`14px 0px 14px 0px`) e Apenas Ícone.
+  - **Bloqueio / Ligação de Cantos (Link Switch):** Altere todos os 4 cantos em uníssono ou desbloqueie para definir independentemente:
+    - *Canto Superior Esquerdo (TL)*
+    - *Canto Superior Direito (TR)*
+    - *Canto Inferior Direito (BR)*
+    - *Canto Inferior Esquerdo (BL)*
+  - Permite criar facilmente qualquer geometria híbrida: gotas, escudos, cantos cortados ou formas personalizadas.
+- **Sincronização com a Cor de Destaque do GNOME (Accent Color):**
+  - Com um clique, sincroniza os botões com a cor de destaque atual do sistema (`org.gnome.desktop.interface accent-color`), integrando perfeitamente com o tema Adwaita do utilizador.
+- **Profundidade, Sombras e Efeito Neon (Box-Shadow):**
+  - **Elevação 3D Suave:** Adiciona profundidade e relevo com sombra sutil aos botões.
+  - **Brilho Neon (Glow):** Projeção luminosa suave calculada com a própria cor de cada botão.
+  - Controlo do raio de desfoque (Blur Radius) de 1px a 16px.
+- **Biblioteca de Perfis de Utilizador:**
+  - Guarde as suas criações como perfis personalizados com nome próprio (`~/.config/titlebar-styler/profiles.json`).
+  - Carregue ou apague perfis guardados diretamente na aba "Modelos".
+- **Exportar e Importar Temas (.styler / JSON):**
+  - Partilhe e faça cópia dos seus temas através de ficheiros JSON portáteis com diálogo nativo de ficheiros (`Gtk.FileDialog`).
+- **Segurança com Cópia de Segurança Automática (Backup):**
+  - Antes de qualquer alteração, o `Titlebar Styler` cria automaticamente uma cópia em `~/.config/gtk-4.0/gtk.css.styler.bak`.
+  - Botão de restauro com 1 clique para reverter imediatamente para o estado anterior.
 - **Importação de Ícones Próprios (SVG):**
-  - Botões para selecionar ficheiros SVG personalizados para **Fechar**, **Minimizar** e **Maximizar**.
-  - Botão para repor os ícones padrão do sistema a qualquer momento.
+  - Seleção de ficheiros SVG personalizados para **Fechar**, **Minimizar** e **Maximizar**.
+  - Reposição dos ícones padrão do sistema a qualquer momento.
 - **Posição e Visibilidade dos Botões:**
   - Ativar ou desativar individualmente qualquer botão (**Fechar**, **Minimizar**, **Maximizar**).
   - Escolher o lado de cada botão: **Esquerda** ou **Direita** (permitindo separar botões livremente).

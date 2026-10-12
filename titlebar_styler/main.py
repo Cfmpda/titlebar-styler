@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import sys
 import os
+import json
 import shutil
 import gi
 gi.require_version('Gtk', '4.0')
@@ -11,11 +12,23 @@ MARKER_START = "/* --- TITLEBAR STYLER INICIO --- */"
 MARKER_END = "/* --- TITLEBAR STYLER FIM --- */"
 
 CONFIG_DIR = os.path.expanduser("~/.config/titlebar-styler")
-SHAPES_DIR = os.path.join(CONFIG_DIR, "shapes")
+PROFILES_FILE = os.path.join(CONFIG_DIR, "profiles.json")
 ICONS_DIR = os.path.join(CONFIG_DIR, "custom-icons")
 
-os.makedirs(SHAPES_DIR, exist_ok=True)
+os.makedirs(CONFIG_DIR, exist_ok=True)
 os.makedirs(ICONS_DIR, exist_ok=True)
+
+ACCENT_COLORS = {
+    "blue": "#3584e4",
+    "teal": "#2190a4",
+    "green": "#3a944a",
+    "yellow": "#c88800",
+    "orange": "#ed5b00",
+    "red": "#e62d42",
+    "pink": "#d56199",
+    "purple": "#9141ac",
+    "slate": "#6f8396"
+}
 
 STYLES = {
     "macOS (Símbolos no Hover)": {
@@ -394,21 +407,39 @@ def adjust_color(hex_str, factor):
     except Exception:
         return hex_str
 
-def get_svg_shape(shape_type, color):
-    if shape_type == "hexagon":
-        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,2 96,26 96,74 50,98 4,74 4,26" fill="{color}"/></svg>'
-    elif shape_type == "star":
-        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,2 65,34 98,39 74,63 80,98 50,81 20,98 26,63 2,39 35,34" fill="{color}"/></svg>'
-    elif shape_type == "diamond":
-        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,2 98,50 50,98 2,50" fill="{color}"/></svg>'
-    elif shape_type == "shield":
-        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M 50,2 L 94,18 L 94,52 C 94,76 74,93 50,98 C 26,93 6,76 6,52 L 6,18 Z" fill="{color}"/></svg>'
-    return None
+def get_accent_color_hex():
+    try:
+        iface = Gio.Settings(schema_id="org.gnome.desktop.interface")
+        if "accent-color" in iface.keys():
+            key = iface.get_string("accent-color")
+            return ACCENT_COLORS.get(key, "#3584e4")
+    except Exception:
+        pass
+    return "#3584e4"
+
+def load_user_profiles():
+    if os.path.exists(PROFILES_FILE):
+        try:
+            with open(PROFILES_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_user_profiles(profiles):
+    try:
+        with open(PROFILES_FILE, "w", encoding="utf-8") as f:
+            json.dump(profiles, f, indent=2)
+    except Exception as e:
+        print(f"Erro ao guardar perfis: {e}")
 
 def generate_css(params, is_preview=False):
     btn_size = params["btn_size"]
     shape = params["shape"]
-    radius = params["radius"]
+    tl = params["tl"]
+    tr = params["tr"]
+    br = params["br"]
+    bl = params["bl"]
     icon_size = params["icon_size"]
     spacing = params["spacing"]
     close_bg = params["close_bg"]
@@ -422,11 +453,13 @@ def generate_css(params, is_preview=False):
     border_color = params["border_color"]
     icon_visibility = params["icon_visibility"]
     hover_effect = params["hover_effect"]
+    shadow_enabled = params.get("shadow_enabled", False)
+    shadow_type = params.get("shadow_type", "3d")
+    shadow_blur = params.get("shadow_blur", 4)
 
     custom_icon_close = params.get("custom_icon_close")
     custom_icon_min = params.get("custom_icon_min")
     custom_icon_max = params.get("custom_icon_max")
-    custom_shape_svg = params.get("custom_shape_svg")
 
     if hover_effect == "darken":
         close_hover = adjust_color(close_bg, 0.88)
@@ -459,49 +492,23 @@ def generate_css(params, is_preview=False):
 
     v_margin = max(0, (34 - btn_size) // 2)
 
-    # Gerar ficheiros SVG caso a forma seja vetorial
-    svg_bg_close = None
-    svg_bg_close_hover = None
-    svg_bg_min = None
-    svg_bg_min_hover = None
-    svg_bg_max = None
-    svg_bg_max_hover = None
+    # Box-shadow
+    if shadow_enabled:
+        if shadow_type == "3d":
+            shadow_css = f"box-shadow: 0 2px {shadow_blur}px rgba(0, 0, 0, 0.35);"
+            shadow_close = shadow_css
+            shadow_min = shadow_css
+            shadow_max = shadow_css
+        else:  # glow
+            shadow_close = f"box-shadow: 0 0 {shadow_blur}px {close_bg};"
+            shadow_min = f"box-shadow: 0 0 {shadow_blur}px {min_bg};"
+            shadow_max = f"box-shadow: 0 0 {shadow_blur}px {max_bg};"
+    else:
+        shadow_close = "box-shadow: none;"
+        shadow_min = "box-shadow: none;"
+        shadow_max = "box-shadow: none;"
 
-    is_svg_shape = shape in ["hexagon", "star", "diamond", "shield"]
-    if is_svg_shape:
-        c_svg = get_svg_shape(shape, close_bg)
-        ch_svg = get_svg_shape(shape, close_hover)
-        m_svg = get_svg_shape(shape, min_bg)
-        mh_svg = get_svg_shape(shape, min_hover)
-        mx_svg = get_svg_shape(shape, max_bg)
-        mxh_svg = get_svg_shape(shape, max_hover)
-
-        f_c = os.path.join(SHAPES_DIR, f"{shape}_close.svg")
-        f_ch = os.path.join(SHAPES_DIR, f"{shape}_close_hover.svg")
-        f_m = os.path.join(SHAPES_DIR, f"{shape}_min.svg")
-        f_mh = os.path.join(SHAPES_DIR, f"{shape}_min_hover.svg")
-        f_mx = os.path.join(SHAPES_DIR, f"{shape}_max.svg")
-        f_mxh = os.path.join(SHAPES_DIR, f"{shape}_max_hover.svg")
-
-        for path, code in [(f_c, c_svg), (f_ch, ch_svg), (f_m, m_svg), (f_mh, mh_svg), (f_mx, mx_svg), (f_mxh, mxh_svg)]:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(code)
-
-        svg_bg_close = f_c
-        svg_bg_close_hover = f_ch
-        svg_bg_min = f_m
-        svg_bg_min_hover = f_mh
-        svg_bg_max = f_mx
-        svg_bg_max_hover = f_mxh
-    elif shape == "custom_svg" and custom_shape_svg and os.path.exists(custom_shape_svg):
-        svg_bg_close = custom_shape_svg
-        svg_bg_close_hover = custom_shape_svg
-        svg_bg_min = custom_shape_svg
-        svg_bg_min_hover = custom_shape_svg
-        svg_bg_max = custom_shape_svg
-        svg_bg_max_hover = custom_shape_svg
-
-    # Formatação de CSS para formas
+    # Shape calculation (border-radius)
     if shape == "icon_only":
         base_shape_css = """
         border-radius: 9999px;
@@ -521,36 +528,22 @@ def generate_css(params, is_preview=False):
             hover_close_bg_css = "background-color: transparent;"
             hover_min_bg_css = "background-color: transparent;"
             hover_max_bg_css = "background-color: transparent;"
-    elif is_svg_shape or (shape == "custom_svg" and svg_bg_close):
-        base_shape_css = f"""
-        border-radius: 0;
-        background-color: transparent;
-        border: none;
-        box-shadow: none;
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-        """
-        hover_close_bg_css = f"background-image: url('{svg_bg_close_hover}');"
-        hover_min_bg_css = f"background-image: url('{svg_bg_min_hover}');"
-        hover_max_bg_css = f"background-image: url('{svg_bg_max_hover}');"
+        close_bg_normal = "background-color: transparent;"
+        min_bg_normal = "background-color: transparent;"
+        max_bg_normal = "background-color: transparent;"
     else:
-        # border-radius normal ou assimétrico (ex: 14px 0px 14px 0px)
-        rad_val = f"{radius}px" if isinstance(radius, int) else radius
+        # border-radius dos 4 cantos: tl tr br bl
         base_shape_css = f"""
-        border-radius: {rad_val};
+        border-radius: {tl}px {tr}px {br}px {bl}px;
         border: {border_css};
-        box-shadow: none;
         background-clip: padding-box;
         """
+        close_bg_normal = f"background-color: {close_bg};"
+        min_bg_normal = f"background-color: {min_bg};"
+        max_bg_normal = f"background-color: {max_bg};"
         hover_close_bg_css = f"background-color: {close_hover};"
         hover_min_bg_css = f"background-color: {min_hover};"
         hover_max_bg_css = f"background-color: {max_hover};"
-
-    # Background-image normal para SVGs
-    close_bg_normal = f"background-image: url('{svg_bg_close}');" if (is_svg_shape or shape == "custom_svg") and svg_bg_close else (f"background-color: {close_bg};" if shape != "icon_only" else "background-color: transparent;")
-    min_bg_normal = f"background-image: url('{svg_bg_min}');" if (is_svg_shape or shape == "custom_svg") and svg_bg_min else (f"background-color: {min_bg};" if shape != "icon_only" else "background-color: transparent;")
-    max_bg_normal = f"background-image: url('{svg_bg_max}');" if (is_svg_shape or shape == "custom_svg") and svg_bg_max else (f"background-color: {max_bg};" if shape != "icon_only" else "background-color: transparent;")
 
     # Custom icons rules
     icon_source_close = f"-gtk-icon-source: url('{custom_icon_close}');" if custom_icon_close and os.path.exists(custom_icon_close) else ""
@@ -583,6 +576,7 @@ def generate_css(params, is_preview=False):
         .live-preview-box .preview-btn.preview-close {{
             {close_bg_normal}
             color: {close_fg};
+            {shadow_close}
         }}
         .live-preview-box .preview-btn.preview-close:hover {{
             {hover_close_bg_css}
@@ -593,6 +587,7 @@ def generate_css(params, is_preview=False):
         .live-preview-box .preview-btn.preview-min {{
             {min_bg_normal}
             color: {min_fg};
+            {shadow_min}
         }}
         .live-preview-box .preview-btn.preview-min:hover {{
             {hover_min_bg_css}
@@ -603,6 +598,7 @@ def generate_css(params, is_preview=False):
         .live-preview-box .preview-btn.preview-max {{
             {max_bg_normal}
             color: {max_fg};
+            {shadow_max}
         }}
         .live-preview-box .preview-btn.preview-max:hover {{
             {hover_max_bg_css}
@@ -645,6 +641,7 @@ window headerbar windowcontrols button.close,
 headerbar windowcontrols button.close {{
     {close_bg_normal}
     color: {close_fg};
+    {shadow_close}
 }}
 window headerbar windowcontrols button.close:hover,
 headerbar windowcontrols button.close:hover {{
@@ -658,6 +655,7 @@ window headerbar windowcontrols button.minimize,
 headerbar windowcontrols button.minimize {{
     {min_bg_normal}
     color: {min_fg};
+    {shadow_min}
 }}
 window headerbar windowcontrols button.minimize:hover,
 headerbar windowcontrols button.minimize:hover {{
@@ -671,6 +669,7 @@ window headerbar windowcontrols button.maximize,
 headerbar windowcontrols button.maximize {{
     {max_bg_normal}
     color: {max_fg};
+    {shadow_max}
 }}
 window headerbar windowcontrols button.maximize:hover,
 headerbar windowcontrols button.maximize:hover {{
@@ -684,16 +683,25 @@ headerbar windowcontrols button.maximize image {{
 def apply_safe_css(filepath, css_code):
     content = ""
     if os.path.exists(filepath):
+        # Backup automático prévio
+        bak_path = filepath + ".styler.bak"
+        try:
+            shutil.copyfile(filepath, bak_path)
+        except Exception:
+            pass
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
+
     if MARKER_START in content and MARKER_END in content:
         start_idx = content.find(MARKER_START)
         end_idx = content.find(MARKER_END) + len(MARKER_END)
         content = content[:start_idx] + content[end_idx:]
+
     if css_code:
         if content and not content.endswith('\n'):
             content += '\n'
         content += f"{MARKER_START}\n{css_code}\n{MARKER_END}\n"
+
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content.strip() + "\n")
@@ -701,15 +709,15 @@ def apply_safe_css(filepath, css_code):
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.set_default_size(660, 820)
+        self.set_default_size(680, 840)
         self.set_title("Titlebar Styler")
 
         self.custom_icon_close = None
         self.custom_icon_min = None
         self.custom_icon_max = None
-        self.custom_shape_svg = None
 
         self.wm_settings = Gio.Settings(schema_id="org.gnome.desktop.wm.preferences")
+        self.profiles = load_user_profiles()
 
         base_provider = Gtk.CssProvider()
         base_provider.load_from_string(APP_INTERNAL_CSS)
@@ -743,7 +751,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         main_box.append(self.view_stack)
 
-        # Página 1: Modelos Prontos
+        # Página 1: Modelos Prontos & Perfis
         presets_page = self.build_presets_page()
         self.view_stack.add_titled_with_icon(presets_page, "presets", "Modelos", "view-grid-symbolic")
 
@@ -756,6 +764,15 @@ class MainWindow(Adw.ApplicationWindow):
     def build_presets_page(self):
         page = Adw.PreferencesPage()
 
+        # Perfis do Utilizador
+        self.group_user_profiles = Adw.PreferencesGroup(
+            title="Os Meus Perfis",
+            description="Estilos personalizados criados e guardados por ti."
+        )
+        page.add(self.group_user_profiles)
+        self.refresh_user_profiles_ui()
+
+        # Modelos Padrão
         group = Adw.PreferencesGroup(
             title="Modelos Prontos",
             description="Escolhe um estilo de botões pré-configurado para o GNOME 51."
@@ -783,24 +800,22 @@ class MainWindow(Adw.ApplicationWindow):
             group.add(row)
 
         reset_group = Adw.PreferencesGroup(
-            title="Repor Padrão",
-            description="Restaura os botões originais do Fedora/Adwaita sem alterações de CSS."
+            title="Repor & Segurança",
+            description="Restaura os botões originais ou reverte para uma cópia de segurança prévia."
         )
         page.add(reset_group)
 
+        # Restaurar Backup
+        bak_row = Adw.ActionRow(title="Restaurar Cópia de Segurança Anterior")
+        bak_row.set_subtitle("Reverte o ficheiro gtk.css para o estado antes da última alteração.")
+        btn_restore_bak = Gtk.Button(label="Restaurar Backup", valign=Gtk.Align.CENTER)
+        btn_restore_bak.connect("clicked", self.on_restore_backup)
+        bak_row.add_suffix(btn_restore_bak)
+        reset_group.add(bak_row)
+
+        # Restaurar Padrão
         reset_row = Adw.ActionRow(title="Restaurar botões originais do Fedora")
         reset_row.set_subtitle("Remove as regras personalizadas e repõe a disposição padrão de janelas.")
-
-        reset_badge = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
-        reset_badge.add_css_class("preview-badge")
-        reset_badge.set_valign(Gtk.Align.CENTER)
-        for _ in range(3):
-            dot = Gtk.Box()
-            dot.add_css_class("preview-dot")
-            dot.add_css_class("default-dot")
-            reset_badge.append(dot)
-        reset_row.add_prefix(reset_badge)
-
         reset_btn = Gtk.Button(label="Restaurar", valign=Gtk.Align.CENTER)
         reset_btn.add_css_class("destructive-action")
         reset_btn.connect("clicked", self.on_apply, None, "Padrão", ":minimize,maximize,close")
@@ -809,13 +824,58 @@ class MainWindow(Adw.ApplicationWindow):
 
         return page
 
+    def refresh_user_profiles_ui(self):
+        # Limpar linhas existentes
+        for child in list(self.group_user_profiles.observe_children()):
+            self.group_user_profiles.remove(child)
+
+        if not self.profiles:
+            empty_row = Adw.ActionRow(title="Nenhum perfil guardado ainda")
+            empty_row.set_subtitle("Usa a aba 'Personalizar' e clica em 'Guardar Perfil' para guardar o teu tema.")
+            self.group_user_profiles.add(empty_row)
+            return
+
+        for name, p_data in self.profiles.items():
+            row = Adw.ActionRow(title=name)
+            sub = f"Tamanho: {p_data.get('btn_size', 14)}px | Forma: {p_data.get('shape', 'Personalizado')}"
+            row.set_subtitle(sub)
+
+            btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            btn_box.set_valign(Gtk.Align.CENTER)
+
+            btn_del = Gtk.Button(icon_name="user-trash-symbolic")
+            btn_del.add_css_class("flat")
+            btn_del.set_tooltip_text("Eliminar Perfil")
+            btn_del.connect("clicked", lambda b, n=name: self.on_delete_profile(n))
+
+            btn_load = Gtk.Button(label="Aplicar")
+            btn_load.add_css_class("suggested-action")
+            btn_load.connect("clicked", lambda b, d=p_data, n=name: self.on_apply_profile(n, d))
+
+            btn_box.append(btn_del)
+            btn_box.append(btn_load)
+            row.add_suffix(btn_box)
+            self.group_user_profiles.add(row)
+
+    def on_apply_profile(self, name, p_data):
+        self.load_params_into_editor(p_data)
+        sys_css = generate_css(p_data, is_preview=False)
+        layout = self.get_button_layout_string()
+        self.on_apply(None, sys_css, f"Perfil: {name}", layout)
+
+    def on_delete_profile(self, name):
+        if name in self.profiles:
+            del self.profiles[name]
+            save_user_profiles(self.profiles)
+            self.refresh_user_profiles_ui()
+
     def build_custom_page(self):
         page = Adw.PreferencesPage()
 
         # Grupo: Pré-visualização ao vivo
         preview_group = Adw.PreferencesGroup(
             title="Pré-Visualização",
-            description="Barra reativa em tempo real. Passa o cursor para testar a forma, posição e o hover."
+            description="Barra reativa em tempo real. Passa o cursor para testar cantos, posição e hover."
         )
         page.add(preview_group)
 
@@ -925,10 +985,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_pos_max.add_suffix(box_max_pos)
         pos_group.add(self.row_pos_max)
 
-        # Grupo: Dimensões e Formato
+        # Grupo: Editor de Formato Estilo Nova Launcher
         geom_group = Adw.PreferencesGroup(
-            title="Dimensões e Formato",
-            description="Escolhe a forma geométrica do botão, o tamanho e a dimensão dos ícones."
+            title="Formato e Geometria (Estilo Nova Launcher)",
+            description="Escolhe um arquétipo base ou personaliza os 4 cantos de forma independente."
         )
         page.add(geom_group)
 
@@ -941,44 +1001,64 @@ class MainWindow(Adw.ApplicationWindow):
 
         shape_model = Gtk.StringList.new([
             "Círculo Perfeito",
-            "Apenas Ícone (Sem Fundo / Flutuante)",
+            "Squircle (Superelipse Apple 8px)",
             "Cantos Arredondados Suaves (6px)",
             "Quadrado (0px)",
-            "Squircle (Superelipse Apple 8px)",
-            "Folha / Gota (Diagonal Arredondada)",
-            "Canto Único Arredondado",
-            "Polígono: Hexágono (⬡)",
-            "Polígono: Estrela (★)",
-            "Polígono: Diamante / Losango (◆)",
-            "Polígono: Escudo (🛡️)",
-            "Curvatura Personalizada (Slider)",
-            "Importar Forma SVG Própria..."
+            "Folha / Gota Diagonal",
+            "Apenas Ícone (Sem Fundo / Flutuante)",
+            "Personalizado (Editor dos 4 Cantos)"
         ])
-        self.combo_shape = Adw.ComboRow(title="Formato do Botão", model=shape_model)
-        self.combo_shape.set_subtitle("Forma geométrica do botão.")
+        self.combo_shape = Adw.ComboRow(title="Formato Base", model=shape_model)
+        self.combo_shape.set_subtitle("Arquétipo visual do botão.")
         self.combo_shape.set_selected(0)
         self.combo_shape.connect("notify::selected", self.on_shape_changed)
         geom_group.add(self.combo_shape)
 
-        self.spin_radius = Adw.SpinRow.new_with_range(0, 30, 1)
-        self.spin_radius.set_title("Raio da Curvatura (px)")
-        self.spin_radius.set_subtitle("Raio manual dos cantos.")
-        self.spin_radius.set_value(9999)
-        self.spin_radius.set_sensitive(False)
-        self.spin_radius.connect("notify::value", lambda *_: self.update_live_preview())
-        geom_group.add(self.spin_radius)
+        # Editor dos 4 Cantos
+        self.switch_link_corners = Adw.SwitchRow(title="Vincular Todos os Cantos (Cadeado 🔗)")
+        self.switch_link_corners.set_subtitle("Quando ativado, os 4 cantos partilham a mesma curvatura.")
+        self.switch_link_corners.set_active(True)
+        self.switch_link_corners.connect("notify::active", self.on_link_corners_changed)
+        geom_group.add(self.switch_link_corners)
 
-        self.row_custom_shape_file = Adw.ActionRow(title="Forma SVG Personalizada")
-        self.row_custom_shape_file.set_subtitle("Nenhuma forma importada.")
-        btn_choose_shape = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
-        btn_choose_shape.connect("clicked", self.on_choose_custom_shape)
-        self.row_custom_shape_file.add_suffix(btn_choose_shape)
-        self.row_custom_shape_file.set_visible(False)
-        geom_group.add(self.row_custom_shape_file)
+        self.spin_corner_all = Adw.SpinRow.new_with_range(0, 30, 1)
+        self.spin_corner_all.set_title("Raio de Todos os Cantos (px)")
+        self.spin_corner_all.set_value(9999)
+        self.spin_corner_all.connect("notify::value", self.on_corner_all_changed)
+        geom_group.add(self.spin_corner_all)
+
+        # 4 Cantos Livres
+        self.spin_corner_tl = Adw.SpinRow.new_with_range(0, 30, 1)
+        self.spin_corner_tl.set_title("↖ Superior-Esquerdo (px)")
+        self.spin_corner_tl.set_value(9999)
+        self.spin_corner_tl.connect("notify::value", lambda *_: self.update_live_preview())
+        self.spin_corner_tl.set_visible(False)
+        geom_group.add(self.spin_corner_tl)
+
+        self.spin_corner_tr = Adw.SpinRow.new_with_range(0, 30, 1)
+        self.spin_corner_tr.set_title("↗ Superior-Direito (px)")
+        self.spin_corner_tr.set_value(9999)
+        self.spin_corner_tr.connect("notify::value", lambda *_: self.update_live_preview())
+        self.spin_corner_tr.set_visible(False)
+        geom_group.add(self.spin_corner_tr)
+
+        self.spin_corner_br = Adw.SpinRow.new_with_range(0, 30, 1)
+        self.spin_corner_br.set_title("↘ Inferior-Direito (px)")
+        self.spin_corner_br.set_value(9999)
+        self.spin_corner_br.connect("notify::value", lambda *_: self.update_live_preview())
+        self.spin_corner_br.set_visible(False)
+        geom_group.add(self.spin_corner_br)
+
+        self.spin_corner_bl = Adw.SpinRow.new_with_range(0, 30, 1)
+        self.spin_corner_bl.set_title("↙ Inferior-Esquerdo (px)")
+        self.spin_corner_bl.set_value(9999)
+        self.spin_corner_bl.connect("notify::value", lambda *_: self.update_live_preview())
+        self.spin_corner_bl.set_visible(False)
+        geom_group.add(self.spin_corner_bl)
 
         self.spin_icon_size = Adw.SpinRow.new_with_range(6, 20, 1)
         self.spin_icon_size.set_title("Tamanho dos Ícones (px)")
-        self.spin_icon_size.set_subtitle("Ajusta a dimensão dos símbolos (×, −, +) dentro do botão.")
+        self.spin_icon_size.set_subtitle("Dimensão dos símbolos (×, −, +) dentro do botão.")
         self.spin_icon_size.set_value(10)
         self.spin_icon_size.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_icon_size)
@@ -990,49 +1070,48 @@ class MainWindow(Adw.ApplicationWindow):
         self.spin_spacing.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_spacing)
 
-        # Grupo: Ícones Personalizados
-        icons_group = Adw.PreferencesGroup(
-            title="Importar Ícones Personalizados",
-            description="Substitui os símbolos nativos por ficheiros SVG próprios."
+        # Grupo: Efeitos de Profundidade e Sombra
+        shadow_group = Adw.PreferencesGroup(
+            title="Profundidade e Sombra (Box-Shadow & Glow)",
+            description="Adiciona relevo tridimensional suave ou brilho neon aos botões."
         )
-        page.add(icons_group)
+        page.add(shadow_group)
 
-        self.row_icon_close = Adw.ActionRow(title="Ícone Fechar")
-        self.row_icon_close.set_subtitle("Padrão do sistema")
-        btn_c_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
-        btn_c_icon.connect("clicked", lambda b: self.on_choose_custom_icon("close"))
-        self.row_icon_close.add_suffix(btn_c_icon)
-        icons_group.add(self.row_icon_close)
+        self.switch_shadow = Adw.SwitchRow(title="Ativar Efeito de Sombra / Brilho")
+        self.switch_shadow.set_subtitle("Aplica box-shadow dinâmico aos botões.")
+        self.switch_shadow.set_active(False)
+        self.switch_shadow.connect("notify::active", lambda *_: self.on_shadow_toggle())
+        shadow_group.add(self.switch_shadow)
 
-        self.row_icon_min = Adw.ActionRow(title="Ícone Minimizar")
-        self.row_icon_min.set_subtitle("Padrão do sistema")
-        btn_m_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
-        btn_m_icon.connect("clicked", lambda b: self.on_choose_custom_icon("min"))
-        self.row_icon_min.add_suffix(btn_m_icon)
-        icons_group.add(self.row_icon_min)
+        shadow_types = Gtk.StringList.new([
+            "Sombra 3D Suave (Relevo)",
+            "Brilho Neon (Glow na Cor do Botão)"
+        ])
+        self.combo_shadow_type = Adw.ComboRow(title="Tipo de Efeito", model=shadow_types)
+        self.combo_shadow_type.set_selected(0)
+        self.combo_shadow_type.connect("notify::selected", lambda *_: self.update_live_preview())
+        shadow_group.add(self.combo_shadow_type)
 
-        self.row_icon_max = Adw.ActionRow(title="Ícone Maximizar")
-        self.row_icon_max.set_subtitle("Padrão do sistema")
-        btn_mx_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
-        btn_mx_icon.connect("clicked", lambda b: self.on_choose_custom_icon("max"))
-        self.row_icon_max.add_suffix(btn_mx_icon)
-        icons_group.add(self.row_icon_max)
+        self.spin_shadow_blur = Adw.SpinRow.new_with_range(1, 15, 1)
+        self.spin_shadow_blur.set_title("Intensidade / Desfocagem (px)")
+        self.spin_shadow_blur.set_value(4)
+        self.spin_shadow_blur.connect("notify::value", lambda *_: self.update_live_preview())
+        shadow_group.add(self.spin_shadow_blur)
 
-        row_reset_icons = Adw.ActionRow(title="Repor Ícones Nativos")
-        row_reset_icons.set_subtitle("Remove os ícones SVG importados e volta aos padrões.")
-        btn_reset_icons = Gtk.Button(label="Repor Ícones", valign=Gtk.Align.CENTER)
-        btn_reset_icons.connect("clicked", self.on_reset_icons)
-        row_reset_icons.add_suffix(btn_reset_icons)
-        icons_group.add(row_reset_icons)
-
-        # Grupo: Cores dos Botões
+        # Grupo: Cores dos Botões & Sincronização de Acento
         colors_group = Adw.PreferencesGroup(
             title="Cores dos Botões",
-            description="Escolhe as cores de fundo e dos ícones para cada ação."
+            description="Escolhe as cores de cada ação ou sincroniza com a cor de destaque do GNOME."
         )
         page.add(colors_group)
 
         self.color_dialog = Gtk.ColorDialog()
+
+        self.switch_accent = Adw.SwitchRow(title="Sincronizar com Cor de Acento do GNOME")
+        self.switch_accent.set_subtitle("Usa a cor oficial de destaque do sistema Fedora nos botões.")
+        self.switch_accent.set_active(False)
+        self.switch_accent.connect("notify::active", self.on_accent_toggle)
+        colors_group.add(self.switch_accent)
 
         # Fechar
         row_close = Adw.ActionRow(title="Botão Fechar")
@@ -1088,7 +1167,7 @@ class MainWindow(Adw.ApplicationWindow):
         row_max.add_suffix(box_max)
         colors_group.add(row_max)
 
-        # Borda / Contorno
+        # Borda
         self.switch_border = Adw.SwitchRow(title="Adicionar Contorno / Borda")
         self.switch_border.set_subtitle("Desenha uma borda fina em redor de cada botão.")
         self.switch_border.set_active(True)
@@ -1169,6 +1248,67 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_custom_hover_colors.set_visible(False)
         hover_group.add(self.row_custom_hover_colors)
 
+        # Grupo: Ícones Personalizados
+        icons_group = Adw.PreferencesGroup(
+            title="Importar Ícones SVG",
+            description="Substitui os símbolos nativos por ficheiros SVG próprios."
+        )
+        page.add(icons_group)
+
+        self.row_icon_close = Adw.ActionRow(title="Ícone Fechar")
+        self.row_icon_close.set_subtitle("Padrão do sistema")
+        btn_c_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
+        btn_c_icon.connect("clicked", lambda b: self.on_choose_custom_icon("close"))
+        self.row_icon_close.add_suffix(btn_c_icon)
+        icons_group.add(self.row_icon_close)
+
+        self.row_icon_min = Adw.ActionRow(title="Ícone Minimizar")
+        self.row_icon_min.set_subtitle("Padrão do sistema")
+        btn_m_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
+        btn_m_icon.connect("clicked", lambda b: self.on_choose_custom_icon("min"))
+        self.row_icon_min.add_suffix(btn_m_icon)
+        icons_group.add(self.row_icon_min)
+
+        self.row_icon_max = Adw.ActionRow(title="Ícone Maximizar")
+        self.row_icon_max.set_subtitle("Padrão do sistema")
+        btn_mx_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
+        btn_mx_icon.connect("clicked", lambda b: self.on_choose_custom_icon("max"))
+        self.row_icon_max.add_suffix(btn_mx_icon)
+        icons_group.add(self.row_icon_max)
+
+        row_reset_icons = Adw.ActionRow(title="Repor Ícones Nativos")
+        row_reset_icons.set_subtitle("Remove os ícones SVG importados e volta aos padrões.")
+        btn_reset_icons = Gtk.Button(label="Repor Ícones", valign=Gtk.Align.CENTER)
+        btn_reset_icons.connect("clicked", self.on_reset_icons)
+        row_reset_icons.add_suffix(btn_reset_icons)
+        icons_group.add(row_reset_icons)
+
+        # Grupo: Partilha e Perfis
+        share_group = Adw.PreferencesGroup(
+            title="Perfis e Partilha de Temas",
+            description="Guarda as tuas criações ou exporta/importa ficheiros .styler para partilhar."
+        )
+        page.add(share_group)
+
+        share_row = Adw.ActionRow(title="Gerir Tema Atual")
+        box_share = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        box_share.set_valign(Gtk.Align.CENTER)
+
+        btn_save_prof = Gtk.Button(label="Guardar Perfil...")
+        btn_save_prof.connect("clicked", self.on_save_profile_dialog)
+
+        btn_export = Gtk.Button(label="Exportar...")
+        btn_export.connect("clicked", self.on_export_theme)
+
+        btn_import = Gtk.Button(label="Importar...")
+        btn_import.connect("clicked", self.on_import_theme)
+
+        box_share.append(btn_save_prof)
+        box_share.append(btn_export)
+        box_share.append(btn_import)
+        share_row.add_suffix(box_share)
+        share_group.add(share_row)
+
         # Grupo: Ações
         apply_group = Adw.PreferencesGroup(title="Gravar Estilo")
         page.add(apply_group)
@@ -1191,37 +1331,62 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_shape_changed(self, row, pspec):
         sel = row.get_selected()
-        # 11: Curvatura manual
-        self.spin_radius.set_sensitive(sel == 11)
-        # 12: Forma personalizada SVG
-        self.row_custom_shape_file.set_visible(sel == 12)
-        if sel == 12 and not self.custom_shape_svg:
-            self.on_choose_custom_shape(None)
+        # 0: Círculo (9999), 1: Squircle (8), 2: Arredondado (6), 3: Quadrado (0), 4: Folha (14 0 14 0), 5: Apenas Ícone, 6: Personalizado (4 cantos)
+        is_custom = (sel == 6)
+        self.switch_link_corners.set_visible(is_custom)
+        self.spin_corner_all.set_visible(is_custom and self.switch_link_corners.get_active())
+        self.spin_corner_tl.set_visible(is_custom and not self.switch_link_corners.get_active())
+        self.spin_corner_tr.set_visible(is_custom and not self.switch_link_corners.get_active())
+        self.spin_corner_br.set_visible(is_custom and not self.switch_link_corners.get_active())
+        self.spin_corner_bl.set_visible(is_custom and not self.switch_link_corners.get_active())
+
+        if sel == 0:
+            self.spin_corner_all.set_value(9999)
+        elif sel == 1:
+            self.spin_corner_all.set_value(8)
+        elif sel == 2:
+            self.spin_corner_all.set_value(6)
+        elif sel == 3:
+            self.spin_corner_all.set_value(0)
+        elif sel == 4:
+            self.spin_corner_tl.set_value(14)
+            self.spin_corner_tr.set_value(0)
+            self.spin_corner_br.set_value(14)
+            self.spin_corner_bl.set_value(0)
+
         self.update_live_preview()
 
-    def on_choose_custom_shape(self, button):
-        dlg = Gtk.FileDialog(title="Escolher Forma SVG Personalizada")
-        filter_svg = Gtk.FileFilter()
-        filter_svg.set_name("Ficheiros SVG (*.svg)")
-        filter_svg.add_pattern("*.svg")
-        filters = Gio.ListStore.new(Gtk.FileFilter)
-        filters.append(filter_svg)
-        dlg.set_filters(filters)
+    def on_link_corners_changed(self, row, pspec):
+        linked = row.get_active()
+        self.spin_corner_all.set_visible(linked)
+        self.spin_corner_tl.set_visible(not linked)
+        self.spin_corner_tr.set_visible(not linked)
+        self.spin_corner_br.set_visible(not linked)
+        self.spin_corner_bl.set_visible(not linked)
+        if linked:
+            val = self.spin_corner_tl.get_value()
+            self.spin_corner_all.set_value(val)
+        self.update_live_preview()
 
-        def on_open_finish(d, res):
-            try:
-                f = d.open_finish(res)
-                if f:
-                    src = f.get_path()
-                    dest = os.path.join(SHAPES_DIR, "custom_shape.svg")
-                    shutil.copyfile(src, dest)
-                    self.custom_shape_svg = dest
-                    self.row_custom_shape_file.set_subtitle(os.path.basename(src))
-                    self.update_live_preview()
-            except Exception as e:
-                print("Cancelado ou erro:", e)
+    def on_corner_all_changed(self, row, pspec):
+        if self.switch_link_corners.get_active():
+            val = row.get_value()
+            self.spin_corner_tl.set_value(val)
+            self.spin_corner_tr.set_value(val)
+            self.spin_corner_br.set_value(val)
+            self.spin_corner_bl.set_value(val)
+        self.update_live_preview()
 
-        dlg.open(self, None, on_open_finish)
+    def on_shadow_toggle(self):
+        self.update_live_preview()
+
+    def on_accent_toggle(self, row, pspec):
+        if row.get_active():
+            accent_hex = get_accent_color_hex()
+            self.btn_color_close_bg.set_rgba(hex_to_rgba(accent_hex))
+            self.btn_color_min_bg.set_rgba(hex_to_rgba(adjust_color(accent_hex, 0.85)))
+            self.btn_color_max_bg.set_rgba(hex_to_rgba(adjust_color(accent_hex, 1.15)))
+        self.update_live_preview()
 
     def on_choose_custom_icon(self, icon_type):
         dlg = Gtk.FileDialog(title=f"Escolher Ícone SVG ({icon_type})")
@@ -1368,47 +1533,39 @@ class MainWindow(Adw.ApplicationWindow):
     def get_custom_params(self):
         sel_shape = self.combo_shape.get_selected()
         shape_type = "circle"
-        calc_radius = 9999
+        tl = 9999
+        tr = 9999
+        br = 9999
+        bl = 9999
 
         if sel_shape == 0:  # Círculo
             shape_type = "circle"
-            calc_radius = 9999
-        elif sel_shape == 1:  # Apenas Ícone
-            shape_type = "icon_only"
-            calc_radius = 9999
-        elif sel_shape == 2:  # Cantos arredondados
+            tl, tr, br, bl = 9999, 9999, 9999, 9999
+        elif sel_shape == 1:  # Squircle
+            shape_type = "squircle"
+            tl, tr, br, bl = 8, 8, 8, 8
+        elif sel_shape == 2:  # Arredondado
             shape_type = "rounded"
-            calc_radius = 6
+            tl, tr, br, bl = 6, 6, 6, 6
         elif sel_shape == 3:  # Quadrado
             shape_type = "square"
-            calc_radius = 0
-        elif sel_shape == 4:  # Squircle
-            shape_type = "squircle"
-            calc_radius = 8
-        elif sel_shape == 5:  # Folha / Gota
+            tl, tr, br, bl = 0, 0, 0, 0
+        elif sel_shape == 4:  # Folha / Gota
             shape_type = "leaf"
-            calc_radius = "14px 0px 14px 0px"
-        elif sel_shape == 6:  # Canto único
-            shape_type = "single_corner"
-            calc_radius = "14px 0px 0px 0px"
-        elif sel_shape == 7:  # Hexágono
-            shape_type = "hexagon"
-            calc_radius = 0
-        elif sel_shape == 8:  # Estrela
-            shape_type = "star"
-            calc_radius = 0
-        elif sel_shape == 9:  # Diamante
-            shape_type = "diamond"
-            calc_radius = 0
-        elif sel_shape == 10: # Escudo
-            shape_type = "shield"
-            calc_radius = 0
-        elif sel_shape == 11: # Curvatura manual
-            shape_type = "custom_radius"
-            calc_radius = int(self.spin_radius.get_value())
-        elif sel_shape == 12: # Custom SVG
-            shape_type = "custom_svg"
-            calc_radius = 0
+            tl, tr, br, bl = 14, 0, 14, 0
+        elif sel_shape == 5:  # Apenas Ícone
+            shape_type = "icon_only"
+            tl, tr, br, bl = 9999, 9999, 9999, 9999
+        else:  # Personalizado 4 cantos
+            shape_type = "custom_corners"
+            if self.switch_link_corners.get_active():
+                val = int(self.spin_corner_all.get_value())
+                tl, tr, br, bl = val, val, val, val
+            else:
+                tl = int(self.spin_corner_tl.get_value())
+                tr = int(self.spin_corner_tr.get_value())
+                br = int(self.spin_corner_br.get_value())
+                bl = int(self.spin_corner_bl.get_value())
 
         sel_vis = self.combo_icon_vis.get_selected()
         vis_map = {0: "hover", 1: "always", 2: "hidden"}
@@ -1423,7 +1580,11 @@ class MainWindow(Adw.ApplicationWindow):
         return {
             "btn_size": int(self.spin_btn_size.get_value()),
             "shape": shape_type,
-            "radius": calc_radius,
+            "shape_idx": sel_shape,
+            "tl": tl,
+            "tr": tr,
+            "br": br,
+            "bl": bl,
             "icon_size": int(self.spin_icon_size.get_value()),
             "spacing": int(self.spin_spacing.get_value()),
             "close_bg": rgba_to_hex(self.btn_color_close_bg.get_rgba()),
@@ -1435,16 +1596,51 @@ class MainWindow(Adw.ApplicationWindow):
             "close_hover_bg": rgba_to_hex(self.btn_color_close_hover.get_rgba()),
             "min_hover_bg": rgba_to_hex(self.btn_color_min_hover.get_rgba()),
             "max_hover_bg": rgba_to_hex(self.btn_color_max_hover.get_rgba()),
-            "border_enabled": border_active and shape_type not in ["icon_only", "hexagon", "star", "diamond", "shield", "custom_svg"],
+            "border_enabled": border_active and shape_type != "icon_only",
             "border_width": int(self.spin_border_width.get_value()),
             "border_color": border_color_str,
             "icon_visibility": vis_map.get(sel_vis, "hover"),
             "hover_effect": eff_map.get(sel_eff, "darken"),
+            "shadow_enabled": self.switch_shadow.get_active(),
+            "shadow_type": "3d" if self.combo_shadow_type.get_selected() == 0 else "glow",
+            "shadow_blur": int(self.spin_shadow_blur.get_value()),
             "custom_icon_close": self.custom_icon_close,
             "custom_icon_min": self.custom_icon_min,
-            "custom_icon_max": self.custom_icon_max,
-            "custom_shape_svg": self.custom_shape_svg
+            "custom_icon_max": self.custom_icon_max
         }
+
+    def load_params_into_editor(self, p):
+        try:
+            self.spin_btn_size.set_value(p.get("btn_size", 14))
+            self.spin_icon_size.set_value(p.get("icon_size", 10))
+            self.spin_spacing.set_value(p.get("spacing", 4))
+            self.combo_shape.set_selected(p.get("shape_idx", 0))
+
+            tl = p.get("tl", 9999)
+            tr = p.get("tr", 9999)
+            br = p.get("br", 9999)
+            bl = p.get("bl", 9999)
+
+            self.spin_corner_tl.set_value(tl)
+            self.spin_corner_tr.set_value(tr)
+            self.spin_corner_br.set_value(br)
+            self.spin_corner_bl.set_value(bl)
+            self.spin_corner_all.set_value(tl)
+
+            self.btn_color_close_bg.set_rgba(hex_to_rgba(p.get("close_bg", "#ff5f56")))
+            self.btn_color_close_fg.set_rgba(hex_to_rgba(p.get("close_fg", "#4d0000")))
+            self.btn_color_min_bg.set_rgba(hex_to_rgba(p.get("min_bg", "#ffbd2e")))
+            self.btn_color_min_fg.set_rgba(hex_to_rgba(p.get("min_fg", "#995700")))
+            self.btn_color_max_bg.set_rgba(hex_to_rgba(p.get("max_bg", "#27c93f")))
+            self.btn_color_max_fg.set_rgba(hex_to_rgba(p.get("max_fg", "#006500")))
+
+            self.switch_shadow.set_active(p.get("shadow_enabled", False))
+            self.combo_shadow_type.set_selected(0 if p.get("shadow_type") == "3d" else 1)
+            self.spin_shadow_blur.set_value(p.get("shadow_blur", 4))
+
+            self.update_live_preview()
+        except Exception as e:
+            print(f"Erro ao carregar parâmetros: {e}")
 
     def update_live_preview(self):
         params = self.get_custom_params()
@@ -1457,13 +1653,124 @@ class MainWindow(Adw.ApplicationWindow):
         layout = self.get_button_layout_string()
         self.on_apply(button, system_css, "Personalizado", layout)
 
+    def on_save_profile_dialog(self, button):
+        dlg = Adw.AlertDialog(heading="Guardar Perfil", body="Introduz o nome para guardar o teu tema:")
+        entry = Gtk.Entry(placeholder_text="Ex: Meu Tema Cyberpunk")
+        dlg.set_extra_child(entry)
+        dlg.add_response("cancel", "Cancelar")
+        dlg.add_response("save", "Guardar")
+        dlg.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+
+        def on_response(d, response):
+            if response == "save":
+                name = entry.get_text().strip()
+                if name:
+                    p = self.get_custom_params()
+                    self.profiles[name] = p
+                    save_user_profiles(self.profiles)
+                    self.refresh_user_profiles_ui()
+
+        dlg.connect("response", on_response)
+        dlg.present(self)
+
+    def on_export_theme(self, button):
+        dlg = Gtk.FileDialog(title="Exportar Tema")
+        dlg.set_initial_name("tema.styler")
+        filter_styler = Gtk.FileFilter()
+        filter_styler.set_name("Temas Titlebar Styler (*.styler)")
+        filter_styler.add_pattern("*.styler")
+        filter_styler.add_pattern("*.json")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(filter_styler)
+        dlg.set_filters(filters)
+
+        def on_save_finish(d, res):
+            try:
+                f = d.save_finish(res)
+                if f:
+                    path = f.get_path()
+                    data = self.get_custom_params()
+                    with open(path, "w", encoding="utf-8") as out:
+                        json.dump(data, out, indent=2)
+            except Exception as e:
+                print("Exportação cancelada ou erro:", e)
+
+        dlg.save(self, None, on_save_finish)
+
+    def on_import_theme(self, button):
+        dlg = Gtk.FileDialog(title="Importar Tema")
+        filter_styler = Gtk.FileFilter()
+        filter_styler.set_name("Temas Titlebar Styler (*.styler, *.json)")
+        filter_styler.add_pattern("*.styler")
+        filter_styler.add_pattern("*.json")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(filter_styler)
+        dlg.set_filters(filters)
+
+        def on_open_finish(d, res):
+            try:
+                f = d.open_finish(res)
+                if f:
+                    path = f.get_path()
+                    with open(path, "r", encoding="utf-8") as inf:
+                        data = json.load(inf)
+                    name = os.path.splitext(os.path.basename(path))[0]
+                    self.load_params_into_editor(data)
+                    self.profiles[name] = data
+                    save_user_profiles(self.profiles)
+                    self.refresh_user_profiles_ui()
+            except Exception as e:
+                print("Importação cancelada ou erro:", e)
+
+        dlg.open(self, None, on_open_finish)
+
+    def on_restore_backup(self, button):
+        home = os.path.expanduser("~")
+        p4 = os.path.join(home, ".config", "gtk-4.0", "gtk.css")
+        p3 = os.path.join(home, ".config", "gtk-3.0", "gtk.css")
+        bak4 = p4 + ".styler.bak"
+        bak3 = p3 + ".styler.bak"
+
+        restored = False
+        if os.path.exists(bak4):
+            shutil.copyfile(bak4, p4)
+            restored = True
+        if os.path.exists(bak3):
+            shutil.copyfile(bak3, p3)
+            restored = True
+
+        if restored:
+            dialog = Adw.AlertDialog(
+                heading="Cópia Restaurada",
+                body="A cópia de segurança do ficheiro gtk.css foi restaurada com sucesso.\n\nTermina a sessão para recarregar o visual das janelas."
+            )
+            dialog.add_response("cancel", "Mais Tarde")
+            dialog.add_response("logout", "Terminar Sessão Agora")
+            dialog.set_response_appearance("logout", Adw.ResponseAppearance.SUGGESTED)
+            def on_response(dlg, response):
+                if response == "logout":
+                    os.system("gnome-session-quit --logout")
+            dialog.connect("response", on_response)
+            dialog.present(self)
+        else:
+            dialog = Adw.AlertDialog(heading="Sem Cópia", body="Nenhuma cópia de segurança anterior foi encontrada.")
+            dialog.add_response("ok", "OK")
+            dialog.present(self)
+
     def on_reset_editor_defaults(self, button):
         self.spin_btn_size.set_value(14)
         self.combo_shape.set_selected(0)
-        self.spin_radius.set_value(9999)
+        self.switch_link_corners.set_active(True)
+        self.spin_corner_all.set_value(9999)
+        self.spin_corner_tl.set_value(9999)
+        self.spin_corner_tr.set_value(9999)
+        self.spin_corner_br.set_value(9999)
+        self.spin_corner_bl.set_value(9999)
         self.spin_icon_size.set_value(10)
         self.spin_spacing.set_value(4)
         self.combo_layout_preset.set_selected(1)
+        self.switch_shadow.set_active(False)
+        self.switch_accent.set_active(False)
         self.btn_color_close_bg.set_rgba(hex_to_rgba("#ff5f56"))
         self.btn_color_close_fg.set_rgba(hex_to_rgba("#4d0000"))
         self.btn_color_min_bg.set_rgba(hex_to_rgba("#ffbd2e"))
