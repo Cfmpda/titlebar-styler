@@ -99,17 +99,15 @@ A aplicação inclui dois modos de utilização através de abas no topo da jane
 
 ## 📦 Instalação
 
-### Opção 1: Via Fedora COPR (Recomendado)
+### Opção 1: Instalação Rápida em 1 Comando (Universal no Fedora / Linux)
+
+Podes instalar ou atualizar o Titlebar Styler imediatamente executando apenas este comando no teu terminal:
 
 ```bash
-# 1. Ativar o repositório COPR
-sudo dnf copr enable cfmpda/titlebar-styler
-
-# 2. Instalar a aplicação
-sudo dnf install titlebar-styler
+curl -sSL https://raw.githubusercontent.com/Cfmpda/titlebar-styler/main/install.sh | bash
 ```
 
-### Opção 2: Instalação Local no Sistema (A partir do Código-Fonte)
+### Opção 2: A partir do Código-Fonte (Git)
 
 ```bash
 git clone https://github.com/Cfmpda/titlebar-styler.git
@@ -118,8 +116,15 @@ cd titlebar-styler
 # Testar as validações
 make test
 
-# Instalar ou atualizar no sistema
+# Instalar no sistema
 sudo make install
+```
+
+### Opção 3: Via Fedora COPR (Quando ativado)
+
+```bash
+sudo dnf copr enable cfmpda/titlebar-styler
+sudo dnf install titlebar-styler
 ```
 
 Para desinstalar:
