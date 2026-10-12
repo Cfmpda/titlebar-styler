@@ -13,6 +13,7 @@ STYLES = {
     "macOS (Símbolos no Hover)": {
         "description": "Círculos perfeitos com as cores do macOS. Revela os ícones no hover.",
         "preview_classes": ["macos-close", "macos-min", "macos-max"],
+        "layout": "close,minimize,maximize:",
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
@@ -25,6 +26,7 @@ headerbar windowcontrols button.image-button {
     border: 1px solid rgba(0, 0, 0, 0.15);
     box-shadow: none;
     background-clip: padding-box;
+    -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
@@ -75,6 +77,7 @@ headerbar windowcontrols button.maximize:hover {
     "macOS (Ícones Sempre Visíveis)": {
         "description": "Círculos perfeitos com as cores do macOS e ícones sempre visíveis.",
         "preview_classes": ["macos-close", "macos-min", "macos-max"],
+        "layout": "close,minimize,maximize:",
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
@@ -87,6 +90,7 @@ headerbar windowcontrols button.image-button {
     border: 1px solid rgba(0, 0, 0, 0.15);
     box-shadow: none;
     background-clip: padding-box;
+    -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
@@ -134,6 +138,7 @@ headerbar windowcontrols button.maximize:hover {
     "Minimalista (com Ícones)": {
         "description": "Círculos translúcidos sutis com ícones nítidos e elegantes.",
         "preview_classes": ["minimal-dot", "minimal-dot", "minimal-dot"],
+        "layout": ":minimize,maximize,close",
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
@@ -147,6 +152,7 @@ headerbar windowcontrols button.image-button {
     box-shadow: none;
     background-color: alpha(currentColor, 0.08);
     color: alpha(currentColor, 0.75);
+    -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button:hover,
 headerbar windowcontrols button:hover {
@@ -168,6 +174,7 @@ headerbar windowcontrols button.image-button image {
     "Contorno / Outline (Colorido)": {
         "description": "Círculos elegantes com contornos e ícones nas cores de ação.",
         "preview_classes": ["outline-close", "outline-min", "outline-max"],
+        "layout": ":minimize,maximize,close",
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
@@ -179,6 +186,7 @@ headerbar windowcontrols button.image-button {
     margin: 9px 4px;
     box-shadow: none;
     background-color: transparent;
+    -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button.close,
 headerbar windowcontrols button.close {
@@ -225,6 +233,7 @@ headerbar windowcontrols button.image-button image {
     "Fluent / Moderno": {
         "description": "Estilo moderno retangular arredondado com fecho vermelho no hover.",
         "preview_classes": ["fluent-dot", "fluent-dot", "fluent-dot"],
+        "layout": ":minimize,maximize,close",
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
@@ -238,6 +247,7 @@ headerbar windowcontrols button.image-button {
     box-shadow: none;
     background-color: transparent;
     color: currentColor;
+    -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols button:hover,
 headerbar windowcontrols button:hover {
@@ -263,6 +273,7 @@ headerbar windowcontrols button.image-button image {
     "Minimalista Ghost (Oculto até ao Hover)": {
         "description": "Bolinhas e ícones discretos que apenas se revelam ao passar o cursor.",
         "preview_classes": ["ghost-dot", "ghost-dot", "ghost-dot"],
+        "layout": ":minimize,maximize,close",
         "css": """window headerbar windowcontrols button,
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
@@ -278,6 +289,7 @@ headerbar windowcontrols button.image-button {
     color: currentColor;
     opacity: 0.25;
     transition: opacity 150ms ease-in-out;
+    -gtk-icon-size: 10px;
 }
 window headerbar windowcontrols:hover button,
 headerbar windowcontrols:hover button,
@@ -399,6 +411,10 @@ def generate_css(params, is_preview=False):
         close_hover = adjust_color(close_bg, 1.15)
         min_hover = adjust_color(min_bg, 1.15)
         max_hover = adjust_color(max_bg, 1.15)
+    elif hover_effect == "custom":
+        close_hover = params.get("close_hover_bg", close_bg)
+        min_hover = params.get("min_hover_bg", min_bg)
+        max_hover = params.get("max_hover_bg", max_bg)
     else:
         close_hover = close_bg
         min_hover = min_bg
@@ -429,6 +445,7 @@ def generate_css(params, is_preview=False):
             border: {border_css};
             box-shadow: none;
             background-clip: padding-box;
+            -gtk-icon-size: {icon_size}px;
         }}
         .live-preview-box .preview-btn image {{
             min-width: {icon_size}px;
@@ -478,6 +495,7 @@ headerbar windowcontrols button.image-button {{
     border: {border_css};
     box-shadow: none;
     background-clip: padding-box;
+    -gtk-icon-size: {icon_size}px;
 }}
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
@@ -545,10 +563,12 @@ def apply_safe_css(filepath, css_code):
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.set_default_size(620, 750)
+        self.set_default_size(640, 800)
         self.set_title("Titlebar Styler")
 
-        # Injetar CSS base e de Live Preview
+        # GSettings para button-layout
+        self.wm_settings = Gio.Settings(schema_id="org.gnome.desktop.wm.preferences")
+
         base_provider = Gtk.CssProvider()
         base_provider.load_from_string(APP_INTERNAL_CSS)
         Gtk.StyleContext.add_provider_for_display(
@@ -567,7 +587,6 @@ class MainWindow(Adw.ApplicationWindow):
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.set_content(main_box)
 
-        # HeaderBar com ViewSwitcher e Botão Sobre
         header_bar = Adw.HeaderBar()
         main_box.append(header_bar)
 
@@ -590,7 +609,7 @@ class MainWindow(Adw.ApplicationWindow):
         custom_page = self.build_custom_page()
         self.view_stack.add_titled_with_icon(custom_page, "custom", "Personalizar", "preferences-other-symbolic")
 
-        # Inicializar pré-visualização ao vivo com valores padrão
+        # Inicializar pré-visualização ao vivo
         self.update_live_preview()
 
     def build_presets_page(self):
@@ -618,7 +637,7 @@ class MainWindow(Adw.ApplicationWindow):
 
             btn = Gtk.Button(label="Aplicar", valign=Gtk.Align.CENTER)
             btn.add_css_class("suggested-action")
-            btn.connect("clicked", self.on_apply, data["css"], name)
+            btn.connect("clicked", self.on_apply, data["css"], name, data.get("layout"))
             row.add_suffix(btn)
             group.add(row)
 
@@ -629,7 +648,7 @@ class MainWindow(Adw.ApplicationWindow):
         page.add(reset_group)
 
         reset_row = Adw.ActionRow(title="Restaurar botões originais do Fedora")
-        reset_row.set_subtitle("Remove as regras personalizadas de ~/.config/gtk-4.0/gtk.css.")
+        reset_row.set_subtitle("Remove as regras personalizadas e repõe a disposição padrão de janelas.")
 
         reset_badge = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
         reset_badge.add_css_class("preview-badge")
@@ -643,7 +662,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         reset_btn = Gtk.Button(label="Restaurar", valign=Gtk.Align.CENTER)
         reset_btn.add_css_class("destructive-action")
-        reset_btn.connect("clicked", self.on_apply, None, "Padrão")
+        reset_btn.connect("clicked", self.on_apply, None, "Padrão", ":minimize,maximize,close")
         reset_row.add_suffix(reset_btn)
         reset_group.add(reset_row)
 
@@ -655,13 +674,16 @@ class MainWindow(Adw.ApplicationWindow):
         # Grupo: Pré-visualização ao vivo
         preview_group = Adw.PreferencesGroup(
             title="Pré-Visualização",
-            description="Passa o rato pelos botões abaixo para testar os efeitos de hover."
+            description="Barra reativa em tempo real. Passa o cursor para testar a posição e o hover."
         )
         page.add(preview_group)
 
         preview_card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         preview_card.add_css_class("preview-window-frame")
         preview_card.add_css_class("live-preview-box")
+
+        self.box_preview_left = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        self.box_preview_right = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
 
         self.btn_preview_close = Gtk.Button()
         self.btn_preview_close.set_icon_name("window-close-symbolic")
@@ -681,31 +703,106 @@ class MainWindow(Adw.ApplicationWindow):
         self.btn_preview_max.add_css_class("preview-max")
         self.btn_preview_max.set_valign(Gtk.Align.CENTER)
 
-        buttons_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
-        buttons_container.append(self.btn_preview_close)
-        buttons_container.append(self.btn_preview_min)
-        buttons_container.append(self.btn_preview_max)
-
-        preview_card.append(buttons_container)
-
         title_lbl = Gtk.Label(label="Exemplo de Janela GNOME")
         title_lbl.add_css_class("preview-window-title")
         title_lbl.set_hexpand(True)
         title_lbl.set_halign(Gtk.Align.CENTER)
+
+        preview_card.append(self.box_preview_left)
         preview_card.append(title_lbl)
+        preview_card.append(self.box_preview_right)
 
         preview_group.add(preview_card)
+
+        # Grupo: Posição e Visibilidade dos Botões
+        pos_group = Adw.PreferencesGroup(
+            title="Posição e Visibilidade dos Botões",
+            description="Escolhe que botões exibir e em que lado da barra colocá-los (esquerda/direita)."
+        )
+        page.add(pos_group)
+
+        layout_presets = Gtk.StringList.new([
+            "Personalizada",
+            "Todos à Direita (Padrão GNOME)",
+            "Todos à Esquerda (Estilo macOS)",
+            "Separados: Minimizar à Esquerda, Fechar/Maximizar à Direita"
+        ])
+        self.combo_layout_preset = Adw.ComboRow(title="Predefinições de Disposição", model=layout_presets)
+        self.combo_layout_preset.set_subtitle("Atalhos rápidos para alinhar os botões.")
+        self.combo_layout_preset.set_selected(1)
+        self.combo_layout_preset.connect("notify::selected", self.on_layout_preset_changed)
+        pos_group.add(self.combo_layout_preset)
+
+        # Botão Fechar
+        self.row_pos_close = Adw.ActionRow(title="Botão Fechar")
+        self.row_pos_close.set_subtitle("Ativar/desativar e escolher posição.")
+        box_close_pos = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        box_close_pos.set_valign(Gtk.Align.CENTER)
+
+        lbl_c_side = Gtk.Label(label="Lado:")
+        self.drop_side_close = Gtk.DropDown.new_from_strings(["Direita", "Esquerda"])
+        self.drop_side_close.set_selected(0)
+        self.drop_side_close.connect("notify::selected", lambda *_: self.on_individual_pos_changed())
+
+        self.switch_close = Gtk.Switch(active=True, valign=Gtk.Align.CENTER)
+        self.switch_close.connect("notify::active", lambda *_: self.on_individual_pos_changed())
+
+        box_close_pos.append(lbl_c_side)
+        box_close_pos.append(self.drop_side_close)
+        box_close_pos.append(self.switch_close)
+        self.row_pos_close.add_suffix(box_close_pos)
+        pos_group.add(self.row_pos_close)
+
+        # Botão Minimizar
+        self.row_pos_min = Adw.ActionRow(title="Botão Minimizar")
+        self.row_pos_min.set_subtitle("Ativar/desativar e escolher posição.")
+        box_min_pos = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        box_min_pos.set_valign(Gtk.Align.CENTER)
+
+        lbl_m_side = Gtk.Label(label="Lado:")
+        self.drop_side_min = Gtk.DropDown.new_from_strings(["Direita", "Esquerda"])
+        self.drop_side_min.set_selected(0)
+        self.drop_side_min.connect("notify::selected", lambda *_: self.on_individual_pos_changed())
+
+        self.switch_min = Gtk.Switch(active=True, valign=Gtk.Align.CENTER)
+        self.switch_min.connect("notify::active", lambda *_: self.on_individual_pos_changed())
+
+        box_min_pos.append(lbl_m_side)
+        box_min_pos.append(self.drop_side_min)
+        box_min_pos.append(self.switch_min)
+        self.row_pos_min.add_suffix(box_min_pos)
+        pos_group.add(self.row_pos_min)
+
+        # Botão Maximizar
+        self.row_pos_max = Adw.ActionRow(title="Botão Maximizar")
+        self.row_pos_max.set_subtitle("Ativar/desativar e escolher posição.")
+        box_max_pos = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        box_max_pos.set_valign(Gtk.Align.CENTER)
+
+        lbl_mx_side = Gtk.Label(label="Lado:")
+        self.drop_side_max = Gtk.DropDown.new_from_strings(["Direita", "Esquerda"])
+        self.drop_side_max.set_selected(0)
+        self.drop_side_max.connect("notify::selected", lambda *_: self.on_individual_pos_changed())
+
+        self.switch_max = Gtk.Switch(active=True, valign=Gtk.Align.CENTER)
+        self.switch_max.connect("notify::active", lambda *_: self.on_individual_pos_changed())
+
+        box_max_pos.append(lbl_mx_side)
+        box_max_pos.append(self.drop_side_max)
+        box_max_pos.append(self.switch_max)
+        self.row_pos_max.add_suffix(box_max_pos)
+        pos_group.add(self.row_pos_max)
 
         # Grupo: Dimensões e Formato
         geom_group = Adw.PreferencesGroup(
             title="Dimensões e Formato",
-            description="Configura o tamanho exato dos botões e a curvatura geométrica."
+            description="Configura o tamanho do botão, formato e o tamanho dos ícones."
         )
         page.add(geom_group)
 
         self.spin_btn_size = Adw.SpinRow.new_with_range(10, 26, 1)
         self.spin_btn_size.set_title("Tamanho do Botão (px)")
-        self.spin_btn_size.set_subtitle("Largura e altura dos botões de janela.")
+        self.spin_btn_size.set_subtitle("Largura e altura exatas do botão.")
         self.spin_btn_size.set_value(14)
         self.spin_btn_size.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_btn_size)
@@ -732,7 +829,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.spin_icon_size = Adw.SpinRow.new_with_range(6, 20, 1)
         self.spin_icon_size.set_title("Tamanho dos Ícones (px)")
-        self.spin_icon_size.set_subtitle("Dimensão do glifo simbólico interno.")
+        self.spin_icon_size.set_subtitle("Ajusta a dimensão dos símbolos (×, −, +) dentro do botão.")
         self.spin_icon_size.set_value(10)
         self.spin_icon_size.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_icon_size)
@@ -744,7 +841,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.spin_spacing.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_spacing)
 
-        # Grupo: Cores
+        # Grupo: Cores dos Botões
         colors_group = Adw.PreferencesGroup(
             title="Cores dos Botões",
             description="Escolhe as cores de fundo e dos ícones para cada ação."
@@ -866,20 +963,49 @@ class MainWindow(Adw.ApplicationWindow):
         effect_model = Gtk.StringList.new([
             "Escurecer Suavemente",
             "Iluminar / Clarear",
+            "Cor Personalizada no Hover",
             "Nenhum Efeito de Cor"
         ])
         self.combo_hover_effect = Adw.ComboRow(title="Efeito de Cor no Hover", model=effect_model)
         self.combo_hover_effect.set_subtitle("Ajuste da tonalidade da cor ao passar o cursor.")
         self.combo_hover_effect.set_selected(0)
-        self.combo_hover_effect.connect("notify::selected", lambda *_: self.update_live_preview())
+        self.combo_hover_effect.connect("notify::selected", self.on_hover_effect_changed)
         hover_group.add(self.combo_hover_effect)
+
+        # Cores Personalizadas no Hover
+        self.row_custom_hover_colors = Adw.ActionRow(title="Cores de Fundo no Hover")
+        self.row_custom_hover_colors.set_subtitle("Cores específicas exibidas durante o hover.")
+        box_hover_colors = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        box_hover_colors.set_valign(Gtk.Align.CENTER)
+
+        lbl_hc_c = Gtk.Label(label="Fechar:")
+        self.btn_color_close_hover = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#e0443e"))
+        self.btn_color_close_hover.connect("notify::rgba", lambda *_: self.update_live_preview())
+
+        lbl_hc_m = Gtk.Label(label="Min:")
+        self.btn_color_min_hover = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#dea123"))
+        self.btn_color_min_hover.connect("notify::rgba", lambda *_: self.update_live_preview())
+
+        lbl_hc_mx = Gtk.Label(label="Max:")
+        self.btn_color_max_hover = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#1aab29"))
+        self.btn_color_max_hover.connect("notify::rgba", lambda *_: self.update_live_preview())
+
+        box_hover_colors.append(lbl_hc_c)
+        box_hover_colors.append(self.btn_color_close_hover)
+        box_hover_colors.append(lbl_hc_m)
+        box_hover_colors.append(self.btn_color_min_hover)
+        box_hover_colors.append(lbl_hc_mx)
+        box_hover_colors.append(self.btn_color_max_hover)
+        self.row_custom_hover_colors.add_suffix(box_hover_colors)
+        self.row_custom_hover_colors.set_visible(False)
+        hover_group.add(self.row_custom_hover_colors)
 
         # Grupo: Ações
         apply_group = Adw.PreferencesGroup(title="Gravar Estilo")
         page.add(apply_group)
 
         apply_row = Adw.ActionRow(title="Aplicar Estilo Criado")
-        apply_row.set_subtitle("Injeta as tuas definições personalizadas no sistema.")
+        apply_row.set_subtitle("Injeta as definições no CSS e atualiza a disposição dos botões.")
 
         btn_reset_editor = Gtk.Button(label="Repor Predefinições", valign=Gtk.Align.CENTER)
         btn_reset_editor.connect("clicked", self.on_reset_editor_defaults)
@@ -914,17 +1040,109 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_border_opts.set_sensitive(active)
         self.update_live_preview()
 
+    def on_hover_effect_changed(self, row, pspec):
+        sel = row.get_selected()
+        # idx 2 is "Cor Personalizada no Hover"
+        self.row_custom_hover_colors.set_visible(sel == 2)
+        self.update_live_preview()
+
+    def on_layout_preset_changed(self, row, pspec):
+        sel = row.get_selected()
+        if sel == 1:  # Todos à Direita
+            self.switch_close.set_active(True)
+            self.drop_side_close.set_selected(0)
+            self.switch_min.set_active(True)
+            self.drop_side_min.set_selected(0)
+            self.switch_max.set_active(True)
+            self.drop_side_max.set_selected(0)
+        elif sel == 2:  # Todos à Esquerda
+            self.switch_close.set_active(True)
+            self.drop_side_close.set_selected(1)
+            self.switch_min.set_active(True)
+            self.drop_side_min.set_selected(1)
+            self.switch_max.set_active(True)
+            self.drop_side_max.set_selected(1)
+        elif sel == 3:  # Separados
+            self.switch_close.set_active(True)
+            self.drop_side_close.set_selected(0)  # Direita
+            self.switch_min.set_active(True)
+            self.drop_side_min.set_selected(1)    # Esquerda
+            self.switch_max.set_active(True)
+            self.drop_side_max.set_selected(0)    # Direita
+        self.update_button_positions()
+
+    def on_individual_pos_changed(self):
+        # Desmarcar preset para "Personalizada" se não coincidir
+        self.combo_layout_preset.block_signal = True
+        self.update_button_positions()
+
+    def update_button_positions(self):
+        close_active = self.switch_close.get_active()
+        close_side = "left" if self.drop_side_close.get_selected() == 1 else "right"
+        self.drop_side_close.set_sensitive(close_active)
+
+        min_active = self.switch_min.get_active()
+        min_side = "left" if self.drop_side_min.get_selected() == 1 else "right"
+        self.drop_side_min.set_sensitive(min_active)
+
+        max_active = self.switch_max.get_active()
+        max_side = "left" if self.drop_side_max.get_selected() == 1 else "right"
+        self.drop_side_max.set_sensitive(max_active)
+
+        # Atualizar a pré-visualização ao vivo
+        for b in [self.btn_preview_close, self.btn_preview_min, self.btn_preview_max]:
+            p = b.get_parent()
+            if p:
+                p.remove(b)
+
+        # Adicionar à esquerda
+        if close_active and close_side == "left":
+            self.box_preview_left.append(self.btn_preview_close)
+        if min_active and min_side == "left":
+            self.box_preview_left.append(self.btn_preview_min)
+        if max_active and max_side == "left":
+            self.box_preview_left.append(self.btn_preview_max)
+
+        # Adicionar à direita
+        if min_active and min_side == "right":
+            self.box_preview_right.append(self.btn_preview_min)
+        if max_active and max_side == "right":
+            self.box_preview_right.append(self.btn_preview_max)
+        if close_active and close_side == "right":
+            self.box_preview_right.append(self.btn_preview_close)
+
+        self.update_live_preview()
+
+    def get_button_layout_string(self):
+        close_active = self.switch_close.get_active()
+        close_side = "left" if self.drop_side_close.get_selected() == 1 else "right"
+
+        min_active = self.switch_min.get_active()
+        min_side = "left" if self.drop_side_min.get_selected() == 1 else "right"
+
+        max_active = self.switch_max.get_active()
+        max_side = "left" if self.drop_side_max.get_selected() == 1 else "right"
+
+        left = []
+        right = []
+
+        if close_active and close_side == "left":
+            left.append("close")
+        if min_active and min_side == "left":
+            left.append("minimize")
+        if max_active and max_side == "left":
+            left.append("maximize")
+
+        if min_active and min_side == "right":
+            right.append("minimize")
+        if max_active and max_side == "right":
+            right.append("maximize")
+        if close_active and close_side == "right":
+            right.append("close")
+
+        return f"{','.join(left)}:{','.join(right)}"
+
     def get_custom_params(self):
-        sel_vis = self.combo_icon_vis.get_selected()
-        vis_map = {0: "hover", 1: "always", 2: "hidden"}
-
-        sel_eff = self.combo_hover_effect.get_selected()
-        eff_map = {0: "darken", 1: "lighten", 2: "none"}
-
-        border_active = self.switch_border.get_active()
-        b_rgba = self.btn_color_border.get_rgba()
-        border_color_str = f"rgba({int(b_rgba.red*255)}, {int(b_rgba.green*255)}, {int(b_rgba.blue*255)}, {b_rgba.alpha:.2f})"
-
         sel_shape = self.combo_shape.get_selected()
         if sel_shape == 0:
             calc_radius = 9999
@@ -934,6 +1152,16 @@ class MainWindow(Adw.ApplicationWindow):
             calc_radius = 0
         else:
             calc_radius = int(self.spin_radius.get_value())
+
+        sel_vis = self.combo_icon_vis.get_selected()
+        vis_map = {0: "hover", 1: "always", 2: "hidden"}
+
+        sel_eff = self.combo_hover_effect.get_selected()
+        eff_map = {0: "darken", 1: "lighten", 2: "custom", 3: "none"}
+
+        border_active = self.switch_border.get_active()
+        b_rgba = self.btn_color_border.get_rgba()
+        border_color_str = f"rgba({int(b_rgba.red*255)}, {int(b_rgba.green*255)}, {int(b_rgba.blue*255)}, {b_rgba.alpha:.2f})"
 
         return {
             "btn_size": int(self.spin_btn_size.get_value()),
@@ -946,6 +1174,9 @@ class MainWindow(Adw.ApplicationWindow):
             "min_fg": rgba_to_hex(self.btn_color_min_fg.get_rgba()),
             "max_bg": rgba_to_hex(self.btn_color_max_bg.get_rgba()),
             "max_fg": rgba_to_hex(self.btn_color_max_fg.get_rgba()),
+            "close_hover_bg": rgba_to_hex(self.btn_color_close_hover.get_rgba()),
+            "min_hover_bg": rgba_to_hex(self.btn_color_min_hover.get_rgba()),
+            "max_hover_bg": rgba_to_hex(self.btn_color_max_hover.get_rgba()),
             "border_enabled": border_active,
             "border_width": int(self.spin_border_width.get_value()),
             "border_color": border_color_str,
@@ -961,7 +1192,8 @@ class MainWindow(Adw.ApplicationWindow):
     def on_apply_custom_clicked(self, button):
         params = self.get_custom_params()
         system_css = generate_css(params, is_preview=False)
-        self.on_apply(button, system_css, "Personalizado")
+        layout = self.get_button_layout_string()
+        self.on_apply(button, system_css, "Personalizado", layout)
 
     def on_reset_editor_defaults(self, button):
         self.spin_btn_size.set_value(14)
@@ -969,16 +1201,20 @@ class MainWindow(Adw.ApplicationWindow):
         self.spin_radius.set_value(9999)
         self.spin_icon_size.set_value(10)
         self.spin_spacing.set_value(4)
+        self.combo_layout_preset.set_selected(1)
         self.btn_color_close_bg.set_rgba(hex_to_rgba("#ff5f56"))
         self.btn_color_close_fg.set_rgba(hex_to_rgba("#4d0000"))
         self.btn_color_min_bg.set_rgba(hex_to_rgba("#ffbd2e"))
         self.btn_color_min_fg.set_rgba(hex_to_rgba("#995700"))
         self.btn_color_max_bg.set_rgba(hex_to_rgba("#27c93f"))
         self.btn_color_max_fg.set_rgba(hex_to_rgba("#006500"))
+        self.btn_color_close_hover.set_rgba(hex_to_rgba("#e0443e"))
+        self.btn_color_min_hover.set_rgba(hex_to_rgba("#dea123"))
+        self.btn_color_max_hover.set_rgba(hex_to_rgba("#1aab29"))
         self.switch_border.set_active(True)
         self.combo_icon_vis.set_selected(0)
         self.combo_hover_effect.set_selected(0)
-        self.update_live_preview()
+        self.update_button_positions()
 
     def on_about(self, button):
         about = Adw.AboutDialog(
@@ -994,7 +1230,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
         about.present(self)
 
-    def on_apply(self, button, css_code, name):
+    def on_apply(self, button, css_code, name, button_layout=None):
         home = os.path.expanduser("~")
         paths = [
             os.path.join(home, ".config", "gtk-4.0", "gtk.css"),
@@ -1003,9 +1239,21 @@ class MainWindow(Adw.ApplicationWindow):
         try:
             for path in paths:
                 apply_safe_css(path, css_code)
+
+            if button_layout is not None:
+                try:
+                    self.wm_settings.set_string("button-layout", button_layout)
+                except Exception as ex:
+                    print(f"Aviso: não foi possível alterar button-layout: {ex}")
+            elif name == "Padrão":
+                try:
+                    self.wm_settings.reset("button-layout")
+                except Exception:
+                    pass
+
             dialog = Adw.AlertDialog(
                 heading="Estilo Guardado",
-                body=f"O estilo '{name}' foi aplicado com sucesso.\n\nPara que todas as janelas assumam o novo visual em segurança, é necessário terminar a sessão."
+                body=f"O estilo '{name}' foi aplicado com sucesso.\n\nPara que todas as janelas assumam as alterações de tema em segurança, é necessário terminar a sessão."
             )
             dialog.add_response("cancel", "Mais Tarde")
             dialog.add_response("logout", "Terminar Sessão Agora")

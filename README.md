@@ -20,45 +20,51 @@
 
 ## 📖 Visão Geral
 
-O **Titlebar Styler** é uma aplicação nativa rápida e elegante projetada para permitir que os utilizadores do GNOME (incluindo GNOME 51 / Fedora 44+) personalizem o aspeto dos controlos de janelas (**Fechar**, **Minimizar**, **Maximizar**), sem quebrar a integridade do sistema ou causar conflitos de temas.
+O **Titlebar Styler** é uma aplicação nativa rápida e elegante projetada para permitir que os utilizadores do GNOME (incluindo GNOME 51 / Fedora 44+) personalizem o aspeto e comportamento dos controlos de janelas (**Fechar**, **Minimizar**, **Maximizar**), sem quebrar a integridade do sistema ou causar conflitos de temas.
 
-A aplicação inclui agora dois modos de utilização através de abas no topo da janela (`Adw.ViewSwitcher`):
+A aplicação inclui dois modos de utilização através de abas no topo da janela (`Adw.ViewSwitcher`):
 1. **Modelos Prontos:** Estilos pré-configurados prontos a aplicar com um clique.
-2. **Personalizador:** Editor interativo com pré-visualização ao vivo (*Live Preview*) para criar estilos personalizados sob medida.
+2. **Personalizar:** Editor interativo com pré-visualização ao vivo (*Live Preview*) para desenhar botões sob medida.
 
 ### 🛡️ Princípios Técnicos & Segurança
-- **Geometria Perfeita 1:1:** Cálculo dinâmico das margens de compensação para evitar que o GTK4 deforme ou estique os botões verticalmente. Garante círculos e quadrados matematicamente simétricos em qualquer dimensão (de 10px a 26px).
+- **Disposição Segura via GSettings Mutter:** O posicionamento dos botões (esquerda, direita ou divididos) e a sua ativação/desativação utilizam a API oficial `org.gnome.desktop.wm.preferences button-layout`, aplicando-se instantaneamente no sistema com 100% de estabilidade.
+- **Geometria Perfeita 1:1:** Cálculo dinâmico das margens de compensação para evitar que o GTK4 deforme os botões. Garante círculos e quadrados matematicamente simétricos em qualquer dimensão (de 10px a 26px).
+- **Dimensionamento dos Ícones:** Controlo independente de dimensão dos glifos simbólicos internos (`-gtk-icon-size`).
 - **Injeção Cirúrgica e Não-Destrutiva:** Modifica apenas o bloco delimitado por marcadores (`/* --- TITLEBAR STYLER INICIO --- */`) em `~/.config/gtk-4.0/gtk.css` e `~/.config/gtk-3.0/gtk.css`. As tuas personalizações prévias de CSS permanecem 100% intactas.
-- **Zero Parser Errors no GTK4:** Não utiliza `!important`. As regras utilizam seletores de alta especificidade (`window headerbar windowcontrols button`) compatíveis com o motor do GTK4/Libadwaita.
-- **Recarregamento Seguro da Sessão:** Não força o encerramento abrupto de processos (`killall`) para evitar perda de dados em aplicações abertas. Em vez disso, dialoga com o gestor de sessão via `gnome-session-quit --logout`.
-- **Distribuição Nativa RPM:** Desenvolvido e empacotado nativamente para Fedora Linux (via COPR).
+- **Zero Parser Errors no GTK4:** Não utiliza `!important`. As regras utilizam seletores de alta especificidade (`window headerbar windowcontrols button`).
+- **Recarregamento Seguro da Sessão:** Sugestão de logout seguro via `gnome-session-quit --logout`.
 
 ---
 
 ## 🎨 Funcionalidades
 
 ### 1. Modelos Prontos (Presets)
-- **macOS (Símbolos no Hover):** Círculos com as cores clássicas da Apple que revelam os símbolos (`×`, `−`, `+`) em contraste escuro ao passar o cursor.
-- **macOS (Ícones Sempre Visíveis):** Círculos perfeitos com as cores do macOS e ícones simbólicos permanentemente visíveis.
+- **macOS (Símbolos no Hover):** Círculos com as cores clássicas da Apple no lado esquerdo que revelam os símbolos (`×`, `−`, `+`) em contraste escuro ao passar o cursor.
+- **macOS (Ícones Sempre Visíveis):** Círculos com as cores do macOS e ícones simbólicos permanentemente visíveis.
 - **Minimalista (com Ícones):** Círculos translúcidos elegantes com ícones que se adaptam aos temas claro e escuro.
 - **Contorno / Outline (Colorido):** Círculos com borda fina e ícones nas cores de ação (vermelho, amarelo, verde).
 - **Fluent / Moderno:** Cantos arredondados suaves (6px), ícones nítidos e destaque a vermelho no botão de fechar durante o hover.
 - **Minimalista Ghost (Oculto até ao Hover):** Botões ultradiscretos que apenas se revelam ao aproximar o rato.
-- **Repor Padrão:** Restaura os botões originais do Fedora/Adwaita.
+- **Repor Padrão:** Restaura os botões originais do Fedora/Adwaita e a sua posição nativa.
 
 ### 2. Personalizador Interativo (Live Editor)
-- **Pré-Visualização em Tempo Real:** Uma barra de janelas de teste no topo que reage instantaneamente aos ajustes e permite testar o *hover*.
+- **Pré-Visualização em Tempo Real:** Uma barra de janelas reativa que mostra os botões a moverem-se entre a esquerda e a direita, desaparecerem quando desativados e reagirem ao passar o rato (*hover*).
+- **Posição e Visibilidade dos Botões:**
+  - Ativar ou desativar individualmente qualquer botão (**Fechar**, **Minimizar**, **Maximizar**).
+  - Escolher o lado de cada botão: **Esquerda** ou **Direita**.
+  - Permite separar botões livremente (ex: Minimizar à esquerda e Fechar à direita).
+  - Atalhos pré-definidos (Todos à Direita, Todos à Esquerda, Separados).
 - **Dimensões e Formato:**
   - Tamanho dos Botões (10px a 26px).
   - Formato: *Círculo Perfeito*, *Cantos Arredondados (6px)*, *Quadrado (0px)* ou *Curvatura Personalizada*.
-  - Tamanho dos Ícones internos (6px a 20px).
+  - **Tamanho dos Ícones internos (6px a 20px)**.
   - Espaçamento horizontal entre botões (1px a 14px).
 - **Paleta de Cores:**
-  - Cores de fundo e cores do ícone para cada botão (Fechar, Minimizar, Maximizar) usando o `Gtk.ColorDialogButton` nativo.
+  - Cores de fundo e cores do ícone para cada botão usando o `Gtk.ColorDialogButton` nativo.
   - Opção de borda/contorno com cor e espessura ajustáveis.
 - **Comportamentos no Hover:**
   - Visibilidade dos Ícones: *Símbolos no Hover*, *Sempre Visíveis* ou *Ocultar Ícones*.
-  - Efeitos de Cor no Hover: *Escurecer suavemente*, *Iluminar / Clarear* ou *Sem efeito*.
+  - Efeitos de Cor no Hover: *Escurecer suavemente*, *Iluminar / Clarear*, **Cor Personalizada no Hover** (com seletores de cor individuais) ou *Sem efeito*.
 
 ---
 
@@ -83,12 +89,7 @@ cd titlebar-styler
 # Testar as validações
 make test
 
-# Instalar no sistema
-sudo make install
-```
-
-Para atualizar após alterações no código:
-```bash
+# Instalar ou atualizar no sistema
 sudo make install
 ```
 
@@ -102,12 +103,15 @@ sudo make uninstall
 ## 🚀 Como Utilizar
 
 1. Abre o **Titlebar Styler** a partir da gaveta de aplicações do GNOME (ou executa `titlebar-styler` no terminal).
-2. Na aba **Modelos**, podes escolher um dos estilos predefinidos e clicar em **Aplicar**.
-3. Na aba **Personalizar**, podes ajustar cada detalhe visual ao teu gosto, testar o hover na pré-visualização e clicar em **Aplicar no Sistema**.
-4. Quando surgir a janela de diálogo:
-   - Clica em **Terminar Sessão Agora** para que todas as aplicações assumam o visual em segurança; ou
-   - Clica em **Mais Tarde** se estiveres a trabalhar.
-5. Para restaurar o visual de fábrica a qualquer momento, basta aceder a **Repor Padrão** e clicar em **Restaurar**.
+2. Na aba **Modelos**, podes aplicar um dos estilos prontos com 1 clique.
+3. Na aba **Personalizar**:
+   - Ativa/desativa os botões que desejas exibir e escolhe se ficam à esquerda ou à direita.
+   - Ajusta o tamanho do botão, formato e o tamanho dos ícones.
+   - Escolhe as cores normais e as cores durante o hover.
+   - Testa tudo na **Pré-Visualização** no topo.
+   - Clica em **Aplicar no Sistema**.
+4. Quando surgir a janela de confirmação de sessão, podes terminar sessão de imediato ou mais tarde.
+5. Para restaurar o visual original do sistema a qualquer altura, basta clicar em **Restaurar** na secção **Repor Padrão**.
 
 ---
 
