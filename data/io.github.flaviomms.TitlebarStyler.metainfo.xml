@@ -11,7 +11,7 @@
     </p>
   </description>
   <launchable type="desktop-id">titlebar-styler.desktop</launchable>
-  <developer id="io.github.Cfmpda">
+  <developer id="io.github.cfmpda">
     <name>Flavio MMS</name>
   </developer>
   <url type="homepage">https://github.com/Cfmpda/titlebar-styler</url>
