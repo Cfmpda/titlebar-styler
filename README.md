@@ -62,7 +62,8 @@ A aplicação inclui dois modos de utilização através de abas no topo da jane
 - **Profundidade, Sombras e Efeito Neon (Box-Shadow):**
   - **Elevação 3D Suave:** Adiciona profundidade e relevo com sombra sutil aos botões.
   - **Brilho Neon (Glow):** Projeção luminosa suave calculada com a própria cor de cada botão.
-  - Controlo do raio de desfoque (Blur Radius) de 1px a 16px.
+  - **Comportamento da Sombra:** Escolha entre **Permanente (Sempre Visível)** ou **Apenas no Hover (Ao Passar o Rato)** com transição fluida.
+  - Controlo do raio de desfoque (Blur Radius) de 1px a 15px.
 - **Biblioteca de Perfis de Utilizador:**
   - Guarde as suas criações como perfis personalizados com nome próprio (`~/.config/titlebar-styler/profiles.json`).
   - Carregue ou apague perfis guardados diretamente na aba "Modelos".

@@ -493,20 +493,40 @@ def generate_css(params, is_preview=False):
     v_margin = max(0, (34 - btn_size) // 2)
 
     # Box-shadow
+    shadow_trigger = params.get("shadow_trigger", "permanent")  # "permanent" ou "hover_only"
+
     if shadow_enabled:
         if shadow_type == "3d":
             shadow_css = f"box-shadow: 0 2px {shadow_blur}px rgba(0, 0, 0, 0.35);"
-            shadow_close = shadow_css
-            shadow_min = shadow_css
-            shadow_max = shadow_css
+            shadow_close_val = shadow_css
+            shadow_min_val = shadow_css
+            shadow_max_val = shadow_css
         else:  # glow
-            shadow_close = f"box-shadow: 0 0 {shadow_blur}px {close_bg};"
-            shadow_min = f"box-shadow: 0 0 {shadow_blur}px {min_bg};"
-            shadow_max = f"box-shadow: 0 0 {shadow_blur}px {max_bg};"
+            shadow_close_val = f"box-shadow: 0 0 {shadow_blur}px {close_bg};"
+            shadow_min_val = f"box-shadow: 0 0 {shadow_blur}px {min_bg};"
+            shadow_max_val = f"box-shadow: 0 0 {shadow_blur}px {max_bg};"
+
+        if shadow_trigger == "hover_only":
+            shadow_close_normal = "box-shadow: none;"
+            shadow_min_normal = "box-shadow: none;"
+            shadow_max_normal = "box-shadow: none;"
+            shadow_close_hover = shadow_close_val
+            shadow_min_hover = shadow_min_val
+            shadow_max_hover = shadow_max_val
+        else:  # permanent
+            shadow_close_normal = shadow_close_val
+            shadow_min_normal = shadow_min_val
+            shadow_max_normal = shadow_max_val
+            shadow_close_hover = shadow_close_val
+            shadow_min_hover = shadow_min_val
+            shadow_max_hover = shadow_max_val
     else:
-        shadow_close = "box-shadow: none;"
-        shadow_min = "box-shadow: none;"
-        shadow_max = "box-shadow: none;"
+        shadow_close_normal = "box-shadow: none;"
+        shadow_min_normal = "box-shadow: none;"
+        shadow_max_normal = "box-shadow: none;"
+        shadow_close_hover = "box-shadow: none;"
+        shadow_min_hover = "box-shadow: none;"
+        shadow_max_hover = "box-shadow: none;"
 
     # Shape calculation (border-radius)
     if shape == "icon_only":
@@ -559,6 +579,7 @@ def generate_css(params, is_preview=False):
             margin: 0 {max(1, spacing // 2)}px;
             -gtk-icon-size: {icon_size}px;
             {base_shape_css}
+            transition: all 150ms ease-in-out;
         }}
         .live-preview-box .preview-btn image {{
             min-width: {icon_size}px;
@@ -576,10 +597,11 @@ def generate_css(params, is_preview=False):
         .live-preview-box .preview-btn.preview-close {{
             {close_bg_normal}
             color: {close_fg};
-            {shadow_close}
+            {shadow_close_normal}
         }}
         .live-preview-box .preview-btn.preview-close:hover {{
             {hover_close_bg_css}
+            {shadow_close_hover}
         }}
         .live-preview-box .preview-btn.preview-close image {{
             {icon_source_close}
@@ -587,10 +609,11 @@ def generate_css(params, is_preview=False):
         .live-preview-box .preview-btn.preview-min {{
             {min_bg_normal}
             color: {min_fg};
-            {shadow_min}
+            {shadow_min_normal}
         }}
         .live-preview-box .preview-btn.preview-min:hover {{
             {hover_min_bg_css}
+            {shadow_min_hover}
         }}
         .live-preview-box .preview-btn.preview-min image {{
             {icon_source_min}
@@ -598,10 +621,11 @@ def generate_css(params, is_preview=False):
         .live-preview-box .preview-btn.preview-max {{
             {max_bg_normal}
             color: {max_fg};
-            {shadow_max}
+            {shadow_max_normal}
         }}
         .live-preview-box .preview-btn.preview-max:hover {{
             {hover_max_bg_css}
+            {shadow_max_hover}
         }}
         .live-preview-box .preview-btn.preview-max image {{
             {icon_source_max}
@@ -618,6 +642,7 @@ headerbar windowcontrols button.image-button {{
     margin: {v_margin}px {spacing}px;
     -gtk-icon-size: {icon_size}px;
     {base_shape_css}
+    transition: all 150ms ease-in-out;
 }}
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
@@ -641,11 +666,12 @@ window headerbar windowcontrols button.close,
 headerbar windowcontrols button.close {{
     {close_bg_normal}
     color: {close_fg};
-    {shadow_close}
+    {shadow_close_normal}
 }}
 window headerbar windowcontrols button.close:hover,
 headerbar windowcontrols button.close:hover {{
     {hover_close_bg_css}
+    {shadow_close_hover}
 }}
 window headerbar windowcontrols button.close image,
 headerbar windowcontrols button.close image {{
@@ -655,11 +681,12 @@ window headerbar windowcontrols button.minimize,
 headerbar windowcontrols button.minimize {{
     {min_bg_normal}
     color: {min_fg};
-    {shadow_min}
+    {shadow_min_normal}
 }}
 window headerbar windowcontrols button.minimize:hover,
 headerbar windowcontrols button.minimize:hover {{
     {hover_min_bg_css}
+    {shadow_min_hover}
 }}
 window headerbar windowcontrols button.minimize image,
 headerbar windowcontrols button.minimize image {{
@@ -669,11 +696,12 @@ window headerbar windowcontrols button.maximize,
 headerbar windowcontrols button.maximize {{
     {max_bg_normal}
     color: {max_fg};
-    {shadow_max}
+    {shadow_max_normal}
 }}
 window headerbar windowcontrols button.maximize:hover,
 headerbar windowcontrols button.maximize:hover {{
     {hover_max_bg_css}
+    {shadow_max_hover}
 }}
 window headerbar windowcontrols button.maximize image,
 headerbar windowcontrols button.maximize image {{
@@ -1092,11 +1120,24 @@ class MainWindow(Adw.ApplicationWindow):
         self.combo_shadow_type.connect("notify::selected", lambda *_: self.update_live_preview())
         shadow_group.add(self.combo_shadow_type)
 
+        shadow_triggers = Gtk.StringList.new([
+            "Permanente (Sempre Visível)",
+            "Apenas no Hover (Ao Passar o Rato)"
+        ])
+        self.combo_shadow_trigger = Adw.ComboRow(title="Comportamento da Sombra", model=shadow_triggers)
+        self.combo_shadow_trigger.set_selected(0)
+        self.combo_shadow_trigger.connect("notify::selected", lambda *_: self.update_live_preview())
+        shadow_group.add(self.combo_shadow_trigger)
+
         self.spin_shadow_blur = Adw.SpinRow.new_with_range(1, 15, 1)
         self.spin_shadow_blur.set_title("Intensidade / Desfocagem (px)")
         self.spin_shadow_blur.set_value(4)
         self.spin_shadow_blur.connect("notify::value", lambda *_: self.update_live_preview())
         shadow_group.add(self.spin_shadow_blur)
+
+        self.combo_shadow_type.set_visible(False)
+        self.combo_shadow_trigger.set_visible(False)
+        self.spin_shadow_blur.set_visible(False)
 
         # Grupo: Cores dos Botões & Sincronização de Acento
         colors_group = Adw.PreferencesGroup(
@@ -1378,6 +1419,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_live_preview()
 
     def on_shadow_toggle(self):
+        active = self.switch_shadow.get_active()
+        self.combo_shadow_type.set_visible(active)
+        self.combo_shadow_trigger.set_visible(active)
+        self.spin_shadow_blur.set_visible(active)
         self.update_live_preview()
 
     def on_accent_toggle(self, row, pspec):
@@ -1603,6 +1648,7 @@ class MainWindow(Adw.ApplicationWindow):
             "hover_effect": eff_map.get(sel_eff, "darken"),
             "shadow_enabled": self.switch_shadow.get_active(),
             "shadow_type": "3d" if self.combo_shadow_type.get_selected() == 0 else "glow",
+            "shadow_trigger": "permanent" if self.combo_shadow_trigger.get_selected() == 0 else "hover_only",
             "shadow_blur": int(self.spin_shadow_blur.get_value()),
             "custom_icon_close": self.custom_icon_close,
             "custom_icon_min": self.custom_icon_min,
@@ -1636,7 +1682,9 @@ class MainWindow(Adw.ApplicationWindow):
 
             self.switch_shadow.set_active(p.get("shadow_enabled", False))
             self.combo_shadow_type.set_selected(0 if p.get("shadow_type") == "3d" else 1)
+            self.combo_shadow_trigger.set_selected(0 if p.get("shadow_trigger", "permanent") == "permanent" else 1)
             self.spin_shadow_blur.set_value(p.get("shadow_blur", 4))
+            self.on_shadow_toggle()
 
             self.update_live_preview()
         except Exception as e:
