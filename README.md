@@ -23,18 +23,23 @@
 O **Titlebar Styler** é uma aplicação nativa rápida e elegante projetada para permitir que os utilizadores do GNOME (incluindo GNOME 51 / Fedora 44+) personalizem o aspeto dos controlos de janelas (**Fechar**, **Minimizar**, **Maximizar**), sem quebrar a integridade do sistema ou causar conflitos de temas.
 
 ### 🛡️ Princípios Técnicos & Segurança
+- **Geometria Perfeita 1:1:** Resolve a deformação vertical das janelas GTK4/Libadwaita, garantindo círculos matematicamente exatos (14px × 14px / 16px × 16px) e ícones nítidos e centrados.
 - **Injeção Cirúrgica e Não-Destrutiva:** Modifica apenas o bloco delimitado por marcadores (`/* --- TITLEBAR STYLER INICIO --- */`) em `~/.config/gtk-4.0/gtk.css` e `~/.config/gtk-3.0/gtk.css`. As tuas personalizações prévias de CSS permanecem 100% intactas.
 - **Zero Parser Errors no GTK4:** Não utiliza `!important`. As regras utilizam seletores de alta especificidade (`window headerbar windowcontrols button`) compatíveis com o motor do GTK4/Libadwaita.
-- **Recarregamento Seguro da Sessão:** Não força o encerramento abrupto de processos (`killall`) para evitar corrupção de ficheiros ou perda de dados em aplicações abertas. Em vez disso, dialoga com o gestor de sessão via `gnome-session-quit --logout`.
-- **Distribuição Nativa RPM:** Desenvolvido e empacotado nativamente para Fedora Linux (via COPR), integrando-se diretamente com o ecossistema do sistema operativo sem contornos de sandboxing.
+- **Recarregamento Seguro da Sessão:** Não força o encerramento abrupto de processos (`killall`) para evitar perda de dados em aplicações abertas. Em vez disso, dialoga com o gestor de sessão via `gnome-session-quit --logout`.
+- **Distribuição Nativa RPM:** Desenvolvido e empacotado nativamente para Fedora Linux (via COPR).
 
 ---
 
-## 🎨 Estilos Disponíveis
+## 🎨 Estilos e Ícones Disponíveis
 
-1. **macOS:** Botões redondos estilizados com as cores clássicas (Vermelho / Amarelo / Verde), com efeitos suaves de realce em `:hover` e ícones ocultados.
-2. **Minimalista:** Círculos translúcidos subtis baseados na cor de texto ativa (`currentColor`), integrando-se perfeitamente com qualquer paleta Clara ou Escura do GNOME.
-3. **Restaurar Padrão:** Remove de imediato as regras personalizadas e recupera o visual original do Fedora/Adwaita.
+1. **macOS (Símbolos no Hover):** Bolinhas perfeitamente circulares com as cores clássicas (Vermelho / Amarelo / Verde), revelando os símbolos de controlo (`×`, `−`, `+`) em contraste escuro ao passar o rato (estilo autêntico do macOS).
+2. **macOS (Ícones Sempre Visíveis):** Círculos perfeitos com as cores clássicas e os ícones simbólicos permanentemente visíveis e legíveis.
+3. **Minimalista (com Ícones):** Círculos translúcidos modernos que mantêm a visibilidade e clareza dos ícones (sem ocultar a identidade do botão).
+4. **Contorno / Outline (Colorido):** Círculos com contorno fino e ícones simbólicos nas cores de ação (vermelho para fechar, amarelo para minimizar, verde para maximizar).
+5. **Fluent / Moderno:** Estilo retangular suave com cantos arredondados (6px), ícones nítidos e destaque a vermelho no botão de fecho durante o hover.
+6. **Minimalista Ghost (Oculto até ao Hover):** Botões discretos e translúcidos que apenas revelam os seus detalhes ao passar o cursor pela barra.
+7. **Repor Padrão:** Remove todas as injeções e recupera de imediato os botões originais do Fedora/Adwaita.
 
 ---
 
@@ -66,7 +71,7 @@ sudo dnf install python3 python3-gobject gtk4 libadwaita gnome-session make
 git clone https://github.com/flaviomms/titlebar-styler.git
 cd titlebar-styler
 
-# Testar as especificações
+# Testar as especificações e validações
 make test
 
 # Instalar no sistema
@@ -83,33 +88,25 @@ sudo make uninstall
 ## 🚀 Como Utilizar
 
 1. Abre a gaveta de aplicações do GNOME e pesquisa por **Titlebar Styler** (ou executa `titlebar-styler` no terminal).
-2. Escolhe o teu estilo preferido e clica em **Aplicar**.
-3. Na janela de diálogo que surgir:
-   - Clica em **Terminar Sessão Agora** para aplicar as alterações de imediato a todas as janelas; ou
-   - Clica em **Mais Tarde** se estiveres a meio de tarefas importantes.
-4. Para voltar às definições originais de fábrica, basta aceder à secção **Repor Padrão** e clicar em **Restaurar**.
+2. Cada linha apresenta um indicador visual do aspeto dos botões e a sua descrição.
+3. Escolhe o teu estilo preferido e clica em **Aplicar**.
+4. Na janela de diálogo que surgir:
+   - Clica em **Terminar Sessão Agora** para aplicar as alterações com segurança no gestor de sessão; ou
+   - Clica em **Mais Tarde** se estiveres a trabalhar.
+5. Para voltar às definições originais do sistema, basta aceder à secção **Repor Padrão** e clicar em **Restaurar**.
 
 ---
 
-## 🛠️ Guia do Programador: Publicar no Fedora COPR
+## 🛠️ Publicação no Fedora COPR
 
-Para publicar uma nova versão no teu repositório COPR (`flaviomms/titlebar-styler`):
+Para publicar no repositório COPR (`flaviomms/titlebar-styler`):
 
-### 1. Criar o Projeto no COPR
-1. Acede a [copr.fedorainfracloud.org](https://copr.fedorainfracloud.org/) e autentica-te com a tua conta FAS (Fedora Account System).
-2. Clica em **New Project** e define o nome como `titlebar-styler`.
-3. Escolhe as arquiteturas alvo (ex: Fedora 43, 44, Rawhide em `x86_64` e `aarch64`).
-
-### 2. Configurar Build Automático via Git SCM
-1. Na página do projeto no COPR, vai a **Builds** -> **New Build** -> aba **SCM**.
-2. Preenche os campos:
+1. **Configurar o Repositório:** Acede a [copr.fedorainfracloud.org](https://copr.fedorainfracloud.org/) e cria o projeto `titlebar-styler`.
+2. **Build via SCM:**
    - **Clone URL:** `https://github.com/flaviomms/titlebar-styler.git`
    - **Committish:** `main` (ou a tag `v1.0.0`)
    - **Spec file path:** `titlebar-styler.spec`
-   - **Source build type:** `rpkg` ou `make srpm`
-3. Clica em **Build**.
-
-O COPR irá gerar automaticamente os pacotes RPM e disponibilizá-los aos utilizadores do Fedora.
+   - **Method:** `make_srpm` ou `rpkg`
 
 ---
 
