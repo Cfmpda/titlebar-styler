@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.flaviomms.TitlebarStyler</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Titlebar Styler</name>
+  <summary>Personaliza os botões da barra de janelas no GNOME</summary>
+  <description>
+    <p>
+      O Titlebar Styler permite personalizar os botões de controlo das janelas (fechar, minimizar e maximizar) no ambiente GNOME através de injeção segura e não-destrutiva de CSS GTK4 e GTK3.
+    </p>
+  </description>
+  <launchable type="desktop-id">titlebar-styler.desktop</launchable>
+  <developer id="io.github.flaviomms">
+    <name>Flavio MMS</name>
+  </developer>
+  <url type="homepage">https://github.com/flaviomms/titlebar-styler</url>
+  <url type="bugtracker">https://github.com/flaviomms/titlebar-styler/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.0" date="2026-10-12">
+      <description>
+        <p>Lançamento inicial com estilos macOS e Minimalista.</p>
+      </description>
+    </release>
+  </releases>
+</component>

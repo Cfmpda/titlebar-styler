@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Titlebar Styler
+GenericName=Window Controls Styler
+GenericName[pt]=Personalizador de Janelas
+Comment=Personalizar os botões da barra de janelas no GNOME
+Comment[en]=Customize window titlebar control buttons in GNOME
+Exec=titlebar-styler
+Icon=io.github.flaviomms.TitlebarStyler
+Terminal=false
+Type=Application
+Categories=GTK;GNOME;Settings;DesktopSettings;
+StartupNotify=true
+Keywords=titlebar;buttons;close;minimize;maximize;theme;css;gtk4;adwaita;
