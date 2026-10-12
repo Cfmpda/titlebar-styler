@@ -24,12 +24,12 @@ O **Titlebar Styler** é uma aplicação nativa rápida e elegante projetada par
 
 A aplicação inclui dois modos de utilização através de abas no topo da janela (`Adw.ViewSwitcher`):
 1. **Modelos Prontos:** Estilos pré-configurados prontos a aplicar com um clique.
-2. **Personalizar:** Editor interativo com pré-visualização ao vivo (*Live Preview*) para desenhar botões sob medida.
+2. **Personalizar:** Editor interativo com pré-visualização ao vivo (*Live Preview*) para desenhar botões sob medida com geometrias avançadas, formas vetoriais e suporte a ficheiros SVG próprios.
 
 ### 🛡️ Princípios Técnicos & Segurança
 - **Disposição Segura via GSettings Mutter:** O posicionamento dos botões (esquerda, direita ou divididos) e a sua ativação/desativação utilizam a API oficial `org.gnome.desktop.wm.preferences button-layout`, aplicando-se instantaneamente no sistema com 100% de estabilidade.
-- **Geometria Perfeita 1:1:** Cálculo dinâmico das margens de compensação para evitar que o GTK4 deforme os botões. Garante círculos e quadrados matematicamente simétricos em qualquer dimensão (de 10px a 26px).
-- **Dimensionamento dos Ícones:** Controlo independente de dimensão dos glifos simbólicos internos (`-gtk-icon-size`).
+- **Geometria Perfeita 1:1:** Cálculo dinâmico das margens de compensação para evitar que o GTK4 deforme os botões. Garante simetria exata em qualquer dimensão (de 10px a 26px).
+- **Formas Vetoriais e Importação de SVGs:** Suporte para polígonos vetoriais dinâmicos (hexágonos, estrelas, diamantes, escudos) e importação de ficheiros SVG personalizados tanto para as formas como para os ícones.
 - **Injeção Cirúrgica e Não-Destrutiva:** Modifica apenas o bloco delimitado por marcadores (`/* --- TITLEBAR STYLER INICIO --- */`) em `~/.config/gtk-4.0/gtk.css` e `~/.config/gtk-3.0/gtk.css`. As tuas personalizações prévias de CSS permanecem 100% intactas.
 - **Zero Parser Errors no GTK4:** Não utiliza `!important`. As regras utilizam seletores de alta especificidade (`window headerbar windowcontrols button`).
 - **Recarregamento Seguro da Sessão:** Sugestão de logout seguro via `gnome-session-quit --logout`.
@@ -49,22 +49,43 @@ A aplicação inclui dois modos de utilização através de abas no topo da jane
 
 ### 2. Personalizador Interativo (Live Editor)
 - **Pré-Visualização em Tempo Real:** Uma barra de janelas reativa que mostra os botões a moverem-se entre a esquerda e a direita, desaparecerem quando desativados e reagirem ao passar o rato (*hover*).
+- **Biblioteca de Formatos do Botão:**
+  - *Círculo Perfeito* (`border-radius: 9999px`)
+  - *Apenas Ícone (Sem Fundo / Flutuante)*: O botão não tem moldura visível, destacando apenas o ícone.
+  - *Cantos Arredondados Suaves (6px)*
+  - *Quadrado (0px)*
+  - *Squircle (Superelipse Apple 8px)*
+  - *Folha / Gota Diagonal*: Dois cantos arredondados e dois retos (`14px 0px 14px 0px`).
+  - *Canto Único Arredondado*: Apenas o canto superior esquerdo arredondado (`14px 0px 0px 0px`).
+  - *Polígonos Vetoriais SVG Dinâmicos*:
+    - ⬡ **Hexágono**
+    - ★ **Estrela**
+    - ◆ **Diamante / Losango**
+    - 🛡️ **Escudo**
+  - *Curvatura Personalizada (Slider)*
+  - *Importar Forma SVG Própria...* (permite escolher qualquer SVG do disco).
+- **Importação de Ícones Próprios (SVG):**
+  - Botões para selecionar ficheiros SVG personalizados para **Fechar**, **Minimizar** e **Maximizar**.
+  - Botão para repor os ícones padrão do sistema a qualquer momento.
 - **Posição e Visibilidade dos Botões:**
   - Ativar ou desativar individualmente qualquer botão (**Fechar**, **Minimizar**, **Maximizar**).
-  - Escolher o lado de cada botão: **Esquerda** ou **Direita**.
-  - Permite separar botões livremente (ex: Minimizar à esquerda e Fechar à direita).
+  - Escolher o lado de cada botão: **Esquerda** ou **Direita** (permitindo separar botões livremente).
   - Atalhos pré-definidos (Todos à Direita, Todos à Esquerda, Separados).
 - **Dimensões e Formato:**
   - Tamanho dos Botões (10px a 26px).
-  - Formato: *Círculo Perfeito*, *Cantos Arredondados (6px)*, *Quadrado (0px)* ou *Curvatura Personalizada*.
-  - **Tamanho dos Ícones internos (6px a 20px)**.
+  - Tamanho dos Ícones internos (6px a 20px).
   - Espaçamento horizontal entre botões (1px a 14px).
 - **Paleta de Cores:**
   - Cores de fundo e cores do ícone para cada botão usando o `Gtk.ColorDialogButton` nativo.
   - Opção de borda/contorno com cor e espessura ajustáveis.
 - **Comportamentos no Hover:**
   - Visibilidade dos Ícones: *Símbolos no Hover*, *Sempre Visíveis* ou *Ocultar Ícones*.
-  - Efeitos de Cor no Hover: *Escurecer suavemente*, *Iluminar / Clarear*, **Cor Personalizada no Hover** (com seletores de cor individuais) ou *Sem efeito*.
+  - Efeitos no Hover:
+    - *Escurecer suavemente*
+    - *Iluminar / Clarear*
+    - *Realce de Fundo Suave (Rodela no Hover)* (ideal para o modo "Apenas Ícone")
+    - *Cor Personalizada no Hover* (com seletores de cor individuais)
+    - *Sem efeito*
 
 ---
 
@@ -105,9 +126,11 @@ sudo make uninstall
 1. Abre o **Titlebar Styler** a partir da gaveta de aplicações do GNOME (ou executa `titlebar-styler` no terminal).
 2. Na aba **Modelos**, podes aplicar um dos estilos prontos com 1 clique.
 3. Na aba **Personalizar**:
+   - Escolhe uma forma da lista (ou importa o teu próprio SVG).
+   - Opcionalmente, importa os teus próprios ícones SVG para Fechar, Minimizar e Maximizar.
    - Ativa/desativa os botões que desejas exibir e escolhe se ficam à esquerda ou à direita.
-   - Ajusta o tamanho do botão, formato e o tamanho dos ícones.
-   - Escolhe as cores normais e as cores durante o hover.
+   - Ajusta as dimensões do botão e dos ícones.
+   - Escolhe as cores normais e o comportamento/cores durante o hover.
    - Testa tudo na **Pré-Visualização** no topo.
    - Clica em **Aplicar no Sistema**.
 4. Quando surgir a janela de confirmação de sessão, podes terminar sessão de imediato ou mais tarde.

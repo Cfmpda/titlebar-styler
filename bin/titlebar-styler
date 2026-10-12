@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import sys
 import os
+import shutil
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
@@ -8,6 +9,13 @@ from gi.repository import Gtk, Adw, Gio, Gdk, GLib
 
 MARKER_START = "/* --- TITLEBAR STYLER INICIO --- */"
 MARKER_END = "/* --- TITLEBAR STYLER FIM --- */"
+
+CONFIG_DIR = os.path.expanduser("~/.config/titlebar-styler")
+SHAPES_DIR = os.path.join(CONFIG_DIR, "shapes")
+ICONS_DIR = os.path.join(CONFIG_DIR, "custom-icons")
+
+os.makedirs(SHAPES_DIR, exist_ok=True)
+os.makedirs(ICONS_DIR, exist_ok=True)
 
 STYLES = {
     "macOS (Símbolos no Hover)": {
@@ -386,8 +394,20 @@ def adjust_color(hex_str, factor):
     except Exception:
         return hex_str
 
+def get_svg_shape(shape_type, color):
+    if shape_type == "hexagon":
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,2 96,26 96,74 50,98 4,74 4,26" fill="{color}"/></svg>'
+    elif shape_type == "star":
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,2 65,34 98,39 74,63 80,98 50,81 20,98 26,63 2,39 35,34" fill="{color}"/></svg>'
+    elif shape_type == "diamond":
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50,2 98,50 50,98 2,50" fill="{color}"/></svg>'
+    elif shape_type == "shield":
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M 50,2 L 94,18 L 94,52 C 94,76 74,93 50,98 C 26,93 6,76 6,52 L 6,18 Z" fill="{color}"/></svg>'
+    return None
+
 def generate_css(params, is_preview=False):
     btn_size = params["btn_size"]
+    shape = params["shape"]
     radius = params["radius"]
     icon_size = params["icon_size"]
     spacing = params["spacing"]
@@ -402,6 +422,11 @@ def generate_css(params, is_preview=False):
     border_color = params["border_color"]
     icon_visibility = params["icon_visibility"]
     hover_effect = params["hover_effect"]
+
+    custom_icon_close = params.get("custom_icon_close")
+    custom_icon_min = params.get("custom_icon_min")
+    custom_icon_max = params.get("custom_icon_max")
+    custom_shape_svg = params.get("custom_shape_svg")
 
     if hover_effect == "darken":
         close_hover = adjust_color(close_bg, 0.88)
@@ -434,18 +459,113 @@ def generate_css(params, is_preview=False):
 
     v_margin = max(0, (34 - btn_size) // 2)
 
+    # Gerar ficheiros SVG caso a forma seja vetorial
+    svg_bg_close = None
+    svg_bg_close_hover = None
+    svg_bg_min = None
+    svg_bg_min_hover = None
+    svg_bg_max = None
+    svg_bg_max_hover = None
+
+    is_svg_shape = shape in ["hexagon", "star", "diamond", "shield"]
+    if is_svg_shape:
+        c_svg = get_svg_shape(shape, close_bg)
+        ch_svg = get_svg_shape(shape, close_hover)
+        m_svg = get_svg_shape(shape, min_bg)
+        mh_svg = get_svg_shape(shape, min_hover)
+        mx_svg = get_svg_shape(shape, max_bg)
+        mxh_svg = get_svg_shape(shape, max_hover)
+
+        f_c = os.path.join(SHAPES_DIR, f"{shape}_close.svg")
+        f_ch = os.path.join(SHAPES_DIR, f"{shape}_close_hover.svg")
+        f_m = os.path.join(SHAPES_DIR, f"{shape}_min.svg")
+        f_mh = os.path.join(SHAPES_DIR, f"{shape}_min_hover.svg")
+        f_mx = os.path.join(SHAPES_DIR, f"{shape}_max.svg")
+        f_mxh = os.path.join(SHAPES_DIR, f"{shape}_max_hover.svg")
+
+        for path, code in [(f_c, c_svg), (f_ch, ch_svg), (f_m, m_svg), (f_mh, mh_svg), (f_mx, mx_svg), (f_mxh, mxh_svg)]:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(code)
+
+        svg_bg_close = f_c
+        svg_bg_close_hover = f_ch
+        svg_bg_min = f_m
+        svg_bg_min_hover = f_mh
+        svg_bg_max = f_mx
+        svg_bg_max_hover = f_mxh
+    elif shape == "custom_svg" and custom_shape_svg and os.path.exists(custom_shape_svg):
+        svg_bg_close = custom_shape_svg
+        svg_bg_close_hover = custom_shape_svg
+        svg_bg_min = custom_shape_svg
+        svg_bg_min_hover = custom_shape_svg
+        svg_bg_max = custom_shape_svg
+        svg_bg_max_hover = custom_shape_svg
+
+    # Formatação de CSS para formas
+    if shape == "icon_only":
+        base_shape_css = """
+        border-radius: 9999px;
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+        """
+        if hover_effect == "ring":
+            hover_close_bg_css = "background-color: alpha(currentColor, 0.15);"
+            hover_min_bg_css = "background-color: alpha(currentColor, 0.15);"
+            hover_max_bg_css = "background-color: alpha(currentColor, 0.15);"
+        elif hover_effect == "custom":
+            hover_close_bg_css = f"background-color: {close_hover};"
+            hover_min_bg_css = f"background-color: {min_hover};"
+            hover_max_bg_css = f"background-color: {max_hover};"
+        else:
+            hover_close_bg_css = "background-color: transparent;"
+            hover_min_bg_css = "background-color: transparent;"
+            hover_max_bg_css = "background-color: transparent;"
+    elif is_svg_shape or (shape == "custom_svg" and svg_bg_close):
+        base_shape_css = f"""
+        border-radius: 0;
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        """
+        hover_close_bg_css = f"background-image: url('{svg_bg_close_hover}');"
+        hover_min_bg_css = f"background-image: url('{svg_bg_min_hover}');"
+        hover_max_bg_css = f"background-image: url('{svg_bg_max_hover}');"
+    else:
+        # border-radius normal ou assimétrico (ex: 14px 0px 14px 0px)
+        rad_val = f"{radius}px" if isinstance(radius, int) else radius
+        base_shape_css = f"""
+        border-radius: {rad_val};
+        border: {border_css};
+        box-shadow: none;
+        background-clip: padding-box;
+        """
+        hover_close_bg_css = f"background-color: {close_hover};"
+        hover_min_bg_css = f"background-color: {min_hover};"
+        hover_max_bg_css = f"background-color: {max_hover};"
+
+    # Background-image normal para SVGs
+    close_bg_normal = f"background-image: url('{svg_bg_close}');" if (is_svg_shape or shape == "custom_svg") and svg_bg_close else (f"background-color: {close_bg};" if shape != "icon_only" else "background-color: transparent;")
+    min_bg_normal = f"background-image: url('{svg_bg_min}');" if (is_svg_shape or shape == "custom_svg") and svg_bg_min else (f"background-color: {min_bg};" if shape != "icon_only" else "background-color: transparent;")
+    max_bg_normal = f"background-image: url('{svg_bg_max}');" if (is_svg_shape or shape == "custom_svg") and svg_bg_max else (f"background-color: {max_bg};" if shape != "icon_only" else "background-color: transparent;")
+
+    # Custom icons rules
+    icon_source_close = f"-gtk-icon-source: url('{custom_icon_close}');" if custom_icon_close and os.path.exists(custom_icon_close) else ""
+    icon_source_min = f"-gtk-icon-source: url('{custom_icon_min}');" if custom_icon_min and os.path.exists(custom_icon_min) else ""
+    icon_source_max = f"-gtk-icon-source: url('{custom_icon_max}');" if custom_icon_max and os.path.exists(custom_icon_max) else ""
+
     if is_preview:
         return f"""
         .live-preview-box .preview-btn {{
-            border-radius: {radius}px;
             min-width: {btn_size}px;
             min-height: {btn_size}px;
             padding: 0;
             margin: 0 {max(1, spacing // 2)}px;
-            border: {border_css};
-            box-shadow: none;
-            background-clip: padding-box;
             -gtk-icon-size: {icon_size}px;
+            {base_shape_css}
         }}
         .live-preview-box .preview-btn image {{
             min-width: {icon_size}px;
@@ -461,25 +581,34 @@ def generate_css(params, is_preview=False):
             opacity: {icon_hover_opacity};
         }}
         .live-preview-box .preview-btn.preview-close {{
-            background-color: {close_bg};
+            {close_bg_normal}
             color: {close_fg};
         }}
         .live-preview-box .preview-btn.preview-close:hover {{
-            background-color: {close_hover};
+            {hover_close_bg_css}
+        }}
+        .live-preview-box .preview-btn.preview-close image {{
+            {icon_source_close}
         }}
         .live-preview-box .preview-btn.preview-min {{
-            background-color: {min_bg};
+            {min_bg_normal}
             color: {min_fg};
         }}
         .live-preview-box .preview-btn.preview-min:hover {{
-            background-color: {min_hover};
+            {hover_min_bg_css}
+        }}
+        .live-preview-box .preview-btn.preview-min image {{
+            {icon_source_min}
         }}
         .live-preview-box .preview-btn.preview-max {{
-            background-color: {max_bg};
+            {max_bg_normal}
             color: {max_fg};
         }}
         .live-preview-box .preview-btn.preview-max:hover {{
-            background-color: {max_hover};
+            {hover_max_bg_css}
+        }}
+        .live-preview-box .preview-btn.preview-max image {{
+            {icon_source_max}
         }}
         """
     else:
@@ -487,15 +616,12 @@ def generate_css(params, is_preview=False):
 window headerbar windowcontrols button.image-button,
 headerbar windowcontrols button,
 headerbar windowcontrols button.image-button {{
-    border-radius: {radius}px;
     min-width: {btn_size}px;
     min-height: {btn_size}px;
     padding: 0;
     margin: {v_margin}px {spacing}px;
-    border: {border_css};
-    box-shadow: none;
-    background-clip: padding-box;
     -gtk-icon-size: {icon_size}px;
+    {base_shape_css}
 }}
 window headerbar windowcontrols button image,
 window headerbar windowcontrols button.image-button image,
@@ -517,30 +643,42 @@ headerbar windowcontrols button:hover image {{
 }}
 window headerbar windowcontrols button.close,
 headerbar windowcontrols button.close {{
-    background-color: {close_bg};
+    {close_bg_normal}
     color: {close_fg};
 }}
 window headerbar windowcontrols button.close:hover,
 headerbar windowcontrols button.close:hover {{
-    background-color: {close_hover};
+    {hover_close_bg_css}
+}}
+window headerbar windowcontrols button.close image,
+headerbar windowcontrols button.close image {{
+    {icon_source_close}
 }}
 window headerbar windowcontrols button.minimize,
 headerbar windowcontrols button.minimize {{
-    background-color: {min_bg};
+    {min_bg_normal}
     color: {min_fg};
 }}
 window headerbar windowcontrols button.minimize:hover,
 headerbar windowcontrols button.minimize:hover {{
-    background-color: {min_hover};
+    {hover_min_bg_css}
+}}
+window headerbar windowcontrols button.minimize image,
+headerbar windowcontrols button.minimize image {{
+    {icon_source_min}
 }}
 window headerbar windowcontrols button.maximize,
 headerbar windowcontrols button.maximize {{
-    background-color: {max_bg};
+    {max_bg_normal}
     color: {max_fg};
 }}
 window headerbar windowcontrols button.maximize:hover,
 headerbar windowcontrols button.maximize:hover {{
-    background-color: {max_hover};
+    {hover_max_bg_css}
+}}
+window headerbar windowcontrols button.maximize image,
+headerbar windowcontrols button.maximize image {{
+    {icon_source_max}
 }}"""
 
 def apply_safe_css(filepath, css_code):
@@ -563,10 +701,14 @@ def apply_safe_css(filepath, css_code):
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.set_default_size(640, 800)
+        self.set_default_size(660, 820)
         self.set_title("Titlebar Styler")
 
-        # GSettings para button-layout
+        self.custom_icon_close = None
+        self.custom_icon_min = None
+        self.custom_icon_max = None
+        self.custom_shape_svg = None
+
         self.wm_settings = Gio.Settings(schema_id="org.gnome.desktop.wm.preferences")
 
         base_provider = Gtk.CssProvider()
@@ -609,8 +751,7 @@ class MainWindow(Adw.ApplicationWindow):
         custom_page = self.build_custom_page()
         self.view_stack.add_titled_with_icon(custom_page, "custom", "Personalizar", "preferences-other-symbolic")
 
-        # Inicializar pré-visualização ao vivo
-        self.update_live_preview()
+        self.update_button_positions()
 
     def build_presets_page(self):
         page = Adw.PreferencesPage()
@@ -674,7 +815,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Grupo: Pré-visualização ao vivo
         preview_group = Adw.PreferencesGroup(
             title="Pré-Visualização",
-            description="Barra reativa em tempo real. Passa o cursor para testar a posição e o hover."
+            description="Barra reativa em tempo real. Passa o cursor para testar a forma, posição e o hover."
         )
         page.add(preview_group)
 
@@ -733,60 +874,51 @@ class MainWindow(Adw.ApplicationWindow):
         self.combo_layout_preset.connect("notify::selected", self.on_layout_preset_changed)
         pos_group.add(self.combo_layout_preset)
 
-        # Botão Fechar
+        # Fechar
         self.row_pos_close = Adw.ActionRow(title="Botão Fechar")
         self.row_pos_close.set_subtitle("Ativar/desativar e escolher posição.")
         box_close_pos = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_close_pos.set_valign(Gtk.Align.CENTER)
-
         lbl_c_side = Gtk.Label(label="Lado:")
         self.drop_side_close = Gtk.DropDown.new_from_strings(["Direita", "Esquerda"])
         self.drop_side_close.set_selected(0)
         self.drop_side_close.connect("notify::selected", lambda *_: self.on_individual_pos_changed())
-
         self.switch_close = Gtk.Switch(active=True, valign=Gtk.Align.CENTER)
         self.switch_close.connect("notify::active", lambda *_: self.on_individual_pos_changed())
-
         box_close_pos.append(lbl_c_side)
         box_close_pos.append(self.drop_side_close)
         box_close_pos.append(self.switch_close)
         self.row_pos_close.add_suffix(box_close_pos)
         pos_group.add(self.row_pos_close)
 
-        # Botão Minimizar
+        # Minimizar
         self.row_pos_min = Adw.ActionRow(title="Botão Minimizar")
         self.row_pos_min.set_subtitle("Ativar/desativar e escolher posição.")
         box_min_pos = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_min_pos.set_valign(Gtk.Align.CENTER)
-
         lbl_m_side = Gtk.Label(label="Lado:")
         self.drop_side_min = Gtk.DropDown.new_from_strings(["Direita", "Esquerda"])
         self.drop_side_min.set_selected(0)
         self.drop_side_min.connect("notify::selected", lambda *_: self.on_individual_pos_changed())
-
         self.switch_min = Gtk.Switch(active=True, valign=Gtk.Align.CENTER)
         self.switch_min.connect("notify::active", lambda *_: self.on_individual_pos_changed())
-
         box_min_pos.append(lbl_m_side)
         box_min_pos.append(self.drop_side_min)
         box_min_pos.append(self.switch_min)
         self.row_pos_min.add_suffix(box_min_pos)
         pos_group.add(self.row_pos_min)
 
-        # Botão Maximizar
+        # Maximizar
         self.row_pos_max = Adw.ActionRow(title="Botão Maximizar")
         self.row_pos_max.set_subtitle("Ativar/desativar e escolher posição.")
         box_max_pos = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_max_pos.set_valign(Gtk.Align.CENTER)
-
         lbl_mx_side = Gtk.Label(label="Lado:")
         self.drop_side_max = Gtk.DropDown.new_from_strings(["Direita", "Esquerda"])
         self.drop_side_max.set_selected(0)
         self.drop_side_max.connect("notify::selected", lambda *_: self.on_individual_pos_changed())
-
         self.switch_max = Gtk.Switch(active=True, valign=Gtk.Align.CENTER)
         self.switch_max.connect("notify::active", lambda *_: self.on_individual_pos_changed())
-
         box_max_pos.append(lbl_mx_side)
         box_max_pos.append(self.drop_side_max)
         box_max_pos.append(self.switch_max)
@@ -796,22 +928,31 @@ class MainWindow(Adw.ApplicationWindow):
         # Grupo: Dimensões e Formato
         geom_group = Adw.PreferencesGroup(
             title="Dimensões e Formato",
-            description="Configura o tamanho do botão, formato e o tamanho dos ícones."
+            description="Escolhe a forma geométrica do botão, o tamanho e a dimensão dos ícones."
         )
         page.add(geom_group)
 
         self.spin_btn_size = Adw.SpinRow.new_with_range(10, 26, 1)
         self.spin_btn_size.set_title("Tamanho do Botão (px)")
-        self.spin_btn_size.set_subtitle("Largura e altura exatas do botão.")
+        self.spin_btn_size.set_subtitle("Dimensão externa da área clicável.")
         self.spin_btn_size.set_value(14)
         self.spin_btn_size.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_btn_size)
 
         shape_model = Gtk.StringList.new([
             "Círculo Perfeito",
+            "Apenas Ícone (Sem Fundo / Flutuante)",
             "Cantos Arredondados Suaves (6px)",
             "Quadrado (0px)",
-            "Curvatura Personalizada"
+            "Squircle (Superelipse Apple 8px)",
+            "Folha / Gota (Diagonal Arredondada)",
+            "Canto Único Arredondado",
+            "Polígono: Hexágono (⬡)",
+            "Polígono: Estrela (★)",
+            "Polígono: Diamante / Losango (◆)",
+            "Polígono: Escudo (🛡️)",
+            "Curvatura Personalizada (Slider)",
+            "Importar Forma SVG Própria..."
         ])
         self.combo_shape = Adw.ComboRow(title="Formato do Botão", model=shape_model)
         self.combo_shape.set_subtitle("Forma geométrica do botão.")
@@ -827,6 +968,14 @@ class MainWindow(Adw.ApplicationWindow):
         self.spin_radius.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_radius)
 
+        self.row_custom_shape_file = Adw.ActionRow(title="Forma SVG Personalizada")
+        self.row_custom_shape_file.set_subtitle("Nenhuma forma importada.")
+        btn_choose_shape = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
+        btn_choose_shape.connect("clicked", self.on_choose_custom_shape)
+        self.row_custom_shape_file.add_suffix(btn_choose_shape)
+        self.row_custom_shape_file.set_visible(False)
+        geom_group.add(self.row_custom_shape_file)
+
         self.spin_icon_size = Adw.SpinRow.new_with_range(6, 20, 1)
         self.spin_icon_size.set_title("Tamanho dos Ícones (px)")
         self.spin_icon_size.set_subtitle("Ajusta a dimensão dos símbolos (×, −, +) dentro do botão.")
@@ -840,6 +989,41 @@ class MainWindow(Adw.ApplicationWindow):
         self.spin_spacing.set_value(4)
         self.spin_spacing.connect("notify::value", lambda *_: self.update_live_preview())
         geom_group.add(self.spin_spacing)
+
+        # Grupo: Ícones Personalizados
+        icons_group = Adw.PreferencesGroup(
+            title="Importar Ícones Personalizados",
+            description="Substitui os símbolos nativos por ficheiros SVG próprios."
+        )
+        page.add(icons_group)
+
+        self.row_icon_close = Adw.ActionRow(title="Ícone Fechar")
+        self.row_icon_close.set_subtitle("Padrão do sistema")
+        btn_c_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
+        btn_c_icon.connect("clicked", lambda b: self.on_choose_custom_icon("close"))
+        self.row_icon_close.add_suffix(btn_c_icon)
+        icons_group.add(self.row_icon_close)
+
+        self.row_icon_min = Adw.ActionRow(title="Ícone Minimizar")
+        self.row_icon_min.set_subtitle("Padrão do sistema")
+        btn_m_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
+        btn_m_icon.connect("clicked", lambda b: self.on_choose_custom_icon("min"))
+        self.row_icon_min.add_suffix(btn_m_icon)
+        icons_group.add(self.row_icon_min)
+
+        self.row_icon_max = Adw.ActionRow(title="Ícone Maximizar")
+        self.row_icon_max.set_subtitle("Padrão do sistema")
+        btn_mx_icon = Gtk.Button(label="Escolher SVG...", valign=Gtk.Align.CENTER)
+        btn_mx_icon.connect("clicked", lambda b: self.on_choose_custom_icon("max"))
+        self.row_icon_max.add_suffix(btn_mx_icon)
+        icons_group.add(self.row_icon_max)
+
+        row_reset_icons = Adw.ActionRow(title="Repor Ícones Nativos")
+        row_reset_icons.set_subtitle("Remove os ícones SVG importados e volta aos padrões.")
+        btn_reset_icons = Gtk.Button(label="Repor Ícones", valign=Gtk.Align.CENTER)
+        btn_reset_icons.connect("clicked", self.on_reset_icons)
+        row_reset_icons.add_suffix(btn_reset_icons)
+        icons_group.add(row_reset_icons)
 
         # Grupo: Cores dos Botões
         colors_group = Adw.PreferencesGroup(
@@ -855,15 +1039,12 @@ class MainWindow(Adw.ApplicationWindow):
         row_close.set_subtitle("Cor do botão e do símbolo '×'.")
         box_close = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_close.set_valign(Gtk.Align.CENTER)
-
         lbl_c_bg = Gtk.Label(label="Fundo:")
         self.btn_color_close_bg = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#ff5f56"))
         self.btn_color_close_bg.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         lbl_c_fg = Gtk.Label(label="Ícone:")
         self.btn_color_close_fg = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#4d0000"))
         self.btn_color_close_fg.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         box_close.append(lbl_c_bg)
         box_close.append(self.btn_color_close_bg)
         box_close.append(lbl_c_fg)
@@ -876,15 +1057,12 @@ class MainWindow(Adw.ApplicationWindow):
         row_min.set_subtitle("Cor do botão e do símbolo '−'.")
         box_min = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_min.set_valign(Gtk.Align.CENTER)
-
         lbl_m_bg = Gtk.Label(label="Fundo:")
         self.btn_color_min_bg = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#ffbd2e"))
         self.btn_color_min_bg.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         lbl_m_fg = Gtk.Label(label="Ícone:")
         self.btn_color_min_fg = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#995700"))
         self.btn_color_min_fg.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         box_min.append(lbl_m_bg)
         box_min.append(self.btn_color_min_bg)
         box_min.append(lbl_m_fg)
@@ -897,15 +1075,12 @@ class MainWindow(Adw.ApplicationWindow):
         row_max.set_subtitle("Cor do botão e do símbolo '+'.")
         box_max = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_max.set_valign(Gtk.Align.CENTER)
-
         lbl_mx_bg = Gtk.Label(label="Fundo:")
         self.btn_color_max_bg = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#27c93f"))
         self.btn_color_max_bg.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         lbl_mx_fg = Gtk.Label(label="Ícone:")
         self.btn_color_max_fg = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#006500"))
         self.btn_color_max_fg.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         box_max.append(lbl_mx_bg)
         box_max.append(self.btn_color_max_bg)
         box_max.append(lbl_mx_fg)
@@ -923,18 +1098,15 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_border_opts = Adw.ActionRow(title="Opções da Borda")
         box_border = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_border.set_valign(Gtk.Align.CENTER)
-
         lbl_b_c = Gtk.Label(label="Cor:")
         rgba_border = Gdk.RGBA()
         rgba_border.parse("rgba(0,0,0,0.2)")
         self.btn_color_border = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=rgba_border)
         self.btn_color_border.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         lbl_b_w = Gtk.Label(label="Espessura (px):")
         self.spin_border_width = Gtk.SpinButton.new_with_range(1, 3, 1)
         self.spin_border_width.set_value(1)
         self.spin_border_width.connect("value-changed", lambda *_: self.update_live_preview())
-
         box_border.append(lbl_b_c)
         box_border.append(self.btn_color_border)
         box_border.append(lbl_b_w)
@@ -963,8 +1135,9 @@ class MainWindow(Adw.ApplicationWindow):
         effect_model = Gtk.StringList.new([
             "Escurecer Suavemente",
             "Iluminar / Clarear",
+            "Realce de Fundo Suave (Rodela no Hover)",
             "Cor Personalizada no Hover",
-            "Nenhum Efeito de Cor"
+            "Nenhum Efeito"
         ])
         self.combo_hover_effect = Adw.ComboRow(title="Efeito de Cor no Hover", model=effect_model)
         self.combo_hover_effect.set_subtitle("Ajuste da tonalidade da cor ao passar o cursor.")
@@ -977,19 +1150,15 @@ class MainWindow(Adw.ApplicationWindow):
         self.row_custom_hover_colors.set_subtitle("Cores específicas exibidas durante o hover.")
         box_hover_colors = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         box_hover_colors.set_valign(Gtk.Align.CENTER)
-
         lbl_hc_c = Gtk.Label(label="Fechar:")
         self.btn_color_close_hover = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#e0443e"))
         self.btn_color_close_hover.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         lbl_hc_m = Gtk.Label(label="Min:")
         self.btn_color_min_hover = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#dea123"))
         self.btn_color_min_hover.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         lbl_hc_mx = Gtk.Label(label="Max:")
         self.btn_color_max_hover = Gtk.ColorDialogButton(dialog=self.color_dialog, rgba=hex_to_rgba("#1aab29"))
         self.btn_color_max_hover.connect("notify::rgba", lambda *_: self.update_live_preview())
-
         box_hover_colors.append(lbl_hc_c)
         box_hover_colors.append(self.btn_color_close_hover)
         box_hover_colors.append(lbl_hc_m)
@@ -1022,17 +1191,76 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_shape_changed(self, row, pspec):
         sel = row.get_selected()
-        if sel == 0:  # Círculo
-            self.spin_radius.set_value(9999)
-            self.spin_radius.set_sensitive(False)
-        elif sel == 1:  # 6px
-            self.spin_radius.set_value(6)
-            self.spin_radius.set_sensitive(False)
-        elif sel == 2:  # Quadrado
-            self.spin_radius.set_value(0)
-            self.spin_radius.set_sensitive(False)
-        else:  # Manual
-            self.spin_radius.set_sensitive(True)
+        # 11: Curvatura manual
+        self.spin_radius.set_sensitive(sel == 11)
+        # 12: Forma personalizada SVG
+        self.row_custom_shape_file.set_visible(sel == 12)
+        if sel == 12 and not self.custom_shape_svg:
+            self.on_choose_custom_shape(None)
+        self.update_live_preview()
+
+    def on_choose_custom_shape(self, button):
+        dlg = Gtk.FileDialog(title="Escolher Forma SVG Personalizada")
+        filter_svg = Gtk.FileFilter()
+        filter_svg.set_name("Ficheiros SVG (*.svg)")
+        filter_svg.add_pattern("*.svg")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(filter_svg)
+        dlg.set_filters(filters)
+
+        def on_open_finish(d, res):
+            try:
+                f = d.open_finish(res)
+                if f:
+                    src = f.get_path()
+                    dest = os.path.join(SHAPES_DIR, "custom_shape.svg")
+                    shutil.copyfile(src, dest)
+                    self.custom_shape_svg = dest
+                    self.row_custom_shape_file.set_subtitle(os.path.basename(src))
+                    self.update_live_preview()
+            except Exception as e:
+                print("Cancelado ou erro:", e)
+
+        dlg.open(self, None, on_open_finish)
+
+    def on_choose_custom_icon(self, icon_type):
+        dlg = Gtk.FileDialog(title=f"Escolher Ícone SVG ({icon_type})")
+        filter_svg = Gtk.FileFilter()
+        filter_svg.set_name("Ficheiros SVG (*.svg)")
+        filter_svg.add_pattern("*.svg")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(filter_svg)
+        dlg.set_filters(filters)
+
+        def on_open_finish(d, res):
+            try:
+                f = d.open_finish(res)
+                if f:
+                    src = f.get_path()
+                    dest = os.path.join(ICONS_DIR, f"{icon_type}.svg")
+                    shutil.copyfile(src, dest)
+                    if icon_type == "close":
+                        self.custom_icon_close = dest
+                        self.row_icon_close.set_subtitle(os.path.basename(src))
+                    elif icon_type == "min":
+                        self.custom_icon_min = dest
+                        self.row_icon_min.set_subtitle(os.path.basename(src))
+                    elif icon_type == "max":
+                        self.custom_icon_max = dest
+                        self.row_icon_max.set_subtitle(os.path.basename(src))
+                    self.update_live_preview()
+            except Exception as e:
+                print("Cancelado ou erro:", e)
+
+        dlg.open(self, None, on_open_finish)
+
+    def on_reset_icons(self, button):
+        self.custom_icon_close = None
+        self.custom_icon_min = None
+        self.custom_icon_max = None
+        self.row_icon_close.set_subtitle("Padrão do sistema")
+        self.row_icon_min.set_subtitle("Padrão do sistema")
+        self.row_icon_max.set_subtitle("Padrão do sistema")
         self.update_live_preview()
 
     def on_border_switch_changed(self, row, pspec):
@@ -1042,8 +1270,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_hover_effect_changed(self, row, pspec):
         sel = row.get_selected()
-        # idx 2 is "Cor Personalizada no Hover"
-        self.row_custom_hover_colors.set_visible(sel == 2)
+        # idx 3 is "Cor Personalizada no Hover"
+        self.row_custom_hover_colors.set_visible(sel == 3)
         self.update_live_preview()
 
     def on_layout_preset_changed(self, row, pspec):
@@ -1072,8 +1300,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_button_positions()
 
     def on_individual_pos_changed(self):
-        # Desmarcar preset para "Personalizada" se não coincidir
-        self.combo_layout_preset.block_signal = True
         self.update_button_positions()
 
     def update_button_positions(self):
@@ -1089,13 +1315,11 @@ class MainWindow(Adw.ApplicationWindow):
         max_side = "left" if self.drop_side_max.get_selected() == 1 else "right"
         self.drop_side_max.set_sensitive(max_active)
 
-        # Atualizar a pré-visualização ao vivo
         for b in [self.btn_preview_close, self.btn_preview_min, self.btn_preview_max]:
             p = b.get_parent()
             if p:
                 p.remove(b)
 
-        # Adicionar à esquerda
         if close_active and close_side == "left":
             self.box_preview_left.append(self.btn_preview_close)
         if min_active and min_side == "left":
@@ -1103,7 +1327,6 @@ class MainWindow(Adw.ApplicationWindow):
         if max_active and max_side == "left":
             self.box_preview_left.append(self.btn_preview_max)
 
-        # Adicionar à direita
         if min_active and min_side == "right":
             self.box_preview_right.append(self.btn_preview_min)
         if max_active and max_side == "right":
@@ -1144,20 +1367,54 @@ class MainWindow(Adw.ApplicationWindow):
 
     def get_custom_params(self):
         sel_shape = self.combo_shape.get_selected()
-        if sel_shape == 0:
+        shape_type = "circle"
+        calc_radius = 9999
+
+        if sel_shape == 0:  # Círculo
+            shape_type = "circle"
             calc_radius = 9999
-        elif sel_shape == 1:
+        elif sel_shape == 1:  # Apenas Ícone
+            shape_type = "icon_only"
+            calc_radius = 9999
+        elif sel_shape == 2:  # Cantos arredondados
+            shape_type = "rounded"
             calc_radius = 6
-        elif sel_shape == 2:
+        elif sel_shape == 3:  # Quadrado
+            shape_type = "square"
             calc_radius = 0
-        else:
+        elif sel_shape == 4:  # Squircle
+            shape_type = "squircle"
+            calc_radius = 8
+        elif sel_shape == 5:  # Folha / Gota
+            shape_type = "leaf"
+            calc_radius = "14px 0px 14px 0px"
+        elif sel_shape == 6:  # Canto único
+            shape_type = "single_corner"
+            calc_radius = "14px 0px 0px 0px"
+        elif sel_shape == 7:  # Hexágono
+            shape_type = "hexagon"
+            calc_radius = 0
+        elif sel_shape == 8:  # Estrela
+            shape_type = "star"
+            calc_radius = 0
+        elif sel_shape == 9:  # Diamante
+            shape_type = "diamond"
+            calc_radius = 0
+        elif sel_shape == 10: # Escudo
+            shape_type = "shield"
+            calc_radius = 0
+        elif sel_shape == 11: # Curvatura manual
+            shape_type = "custom_radius"
             calc_radius = int(self.spin_radius.get_value())
+        elif sel_shape == 12: # Custom SVG
+            shape_type = "custom_svg"
+            calc_radius = 0
 
         sel_vis = self.combo_icon_vis.get_selected()
         vis_map = {0: "hover", 1: "always", 2: "hidden"}
 
         sel_eff = self.combo_hover_effect.get_selected()
-        eff_map = {0: "darken", 1: "lighten", 2: "custom", 3: "none"}
+        eff_map = {0: "darken", 1: "lighten", 2: "ring", 3: "custom", 4: "none"}
 
         border_active = self.switch_border.get_active()
         b_rgba = self.btn_color_border.get_rgba()
@@ -1165,6 +1422,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         return {
             "btn_size": int(self.spin_btn_size.get_value()),
+            "shape": shape_type,
             "radius": calc_radius,
             "icon_size": int(self.spin_icon_size.get_value()),
             "spacing": int(self.spin_spacing.get_value()),
@@ -1177,11 +1435,15 @@ class MainWindow(Adw.ApplicationWindow):
             "close_hover_bg": rgba_to_hex(self.btn_color_close_hover.get_rgba()),
             "min_hover_bg": rgba_to_hex(self.btn_color_min_hover.get_rgba()),
             "max_hover_bg": rgba_to_hex(self.btn_color_max_hover.get_rgba()),
-            "border_enabled": border_active,
+            "border_enabled": border_active and shape_type not in ["icon_only", "hexagon", "star", "diamond", "shield", "custom_svg"],
             "border_width": int(self.spin_border_width.get_value()),
             "border_color": border_color_str,
             "icon_visibility": vis_map.get(sel_vis, "hover"),
-            "hover_effect": eff_map.get(sel_eff, "darken")
+            "hover_effect": eff_map.get(sel_eff, "darken"),
+            "custom_icon_close": self.custom_icon_close,
+            "custom_icon_min": self.custom_icon_min,
+            "custom_icon_max": self.custom_icon_max,
+            "custom_shape_svg": self.custom_shape_svg
         }
 
     def update_live_preview(self):
@@ -1214,6 +1476,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.switch_border.set_active(True)
         self.combo_icon_vis.set_selected(0)
         self.combo_hover_effect.set_selected(0)
+        self.on_reset_icons(None)
         self.update_button_positions()
 
     def on_about(self, button):
